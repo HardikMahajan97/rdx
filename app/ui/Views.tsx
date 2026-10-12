@@ -5,7 +5,7 @@ import { attendanceHistory, snapshot, type Snapshot } from '@/lib/snapshot';
 import { timing } from '@/lib/sessions';
 import { fmtDate, fmtTime, istDate, dayOfWeek } from '@/lib/time';
 import { book, withdraw } from '../actions';
-import { AttendanceChart } from './AttendanceChart';
+
 import { BookForm } from './BookForm';
 import { AutoRefresh, Submit } from './Client';
 import { CourtBoard, type BoardPerson } from './CourtBoard';
@@ -133,9 +133,6 @@ export async function StaffDashboard({ t, lang, upcoming }: { me: Player; t: T; 
             </div>
             <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} people={boardPeople(snap)} showNames labels={boardLabels(t)} />
             <People t={t} snap={snap} />
-            <h3>{t('attendance')}</h3>
-            <AttendanceChart id={batch.id} data={history} lang={lang}
-              labels={{ showed: t('showed'), missed: t('missed'), table: t('tableView'), date: t('date'), empty: t('noHistory') }} />
             <a className="btn btn-ghost full" style={{ marginTop: 12 }} href={`/roster?sid=${session.id}`}>{t('navRoster')} →</a>
           </section>
         ))}
