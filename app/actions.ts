@@ -1,14 +1,14 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { sql, type Booking, type Lang, type Player } from '@/lib/db';
+import { sql, type Booking, type Lang, type Membership, type Player } from '@/lib/db';
 import { back, int, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
   currentPlayer, getLang, hashPin, isStaff, LANGS, lockStaff, normalizePhone, pinProblem,
   requirePlayer, setLangCookie, signIn, signOut, unlockStaff, verifyPin,
 } from '@/lib/auth';
 import { clear, clientIp, hit } from '@/lib/ratelimit';
-import { activePlan, planLive } from '@/lib/members';
+import { activePlan, bookable, chargeBookings, covers, planBlocks, planLive, reservedSessions } from '@/lib/members';
 import { bookedSeats, getBatch, timing } from '@/lib/sessions';
 import type { Key } from '@/lib/i18n';
 
@@ -92,64 +92,127 @@ export async function enterPin(form: FormData) {
 
 // ---------- Booking ----------
 
+type Msg = [Key, Record<string, number | string>?];
+
+/** Vote for a slot. Members' own seat goes on their plan; fixed plans only vote for their batch and days. */
 export async function book(form: FormData) {
   const me = await requirePlayer();
   if (isStaff(me.role)) return back('/', 'bookingClosed'); // staff run sessions, they don't book
   const guests = str(form, 'mode') === 'friends' ? Math.min(10, Math.max(1, int(form, 'guests'))) : 0;
 
-  type Msg = [Key, Record<string, number>?];
   const result = await withLockedSession(int(form, 'sessionId'), async (tx, session): Promise<Msg> => {
     const batch = (await getBatch(session.batch_id))!;
-    if (timing(session, batch).phase !== 'open') return ['bookingClosed'];
+    if (!timing(session, batch).canBook) return ['bookingClosed'];
 
     const [existing] = await tx<Booking[]>`
       select * from bookings where session_id = ${session.id} and player_id = ${me.id} for update`;
     if (existing && existing.status !== 'withdrawn') return ['alreadyBooked'];
 
+    const [plan] = await tx<Membership[]>`
+      select * from memberships where player_id = ${me.id} and status = 'active' for update`;
+    if (planBlocks(plan, session)) return ['planOnly'];
+    let membershipId: number | null = null;
+    if (covers(plan, session)) {
+      if (bookable(plan, await reservedSessions(tx, plan.id, existing?.id)) < 1) {
+        return [plan.kind === 'wallet' ? 'walletEmpty' : 'planAllBooked'];
+      }
+      membershipId = plan.id;
+    }
+
     const need = 1 + guests;
     if ((await bookedSeats(tx, session.id)) + need > session.capacity) {
       return need > 1 ? ['notEnough', { n: need }] : ['sessionFull'];
     }
-    if (existing) {
-      await tx`
-        update bookings set status = 'booked', guests = ${guests}, source = 'self', paid = false, updated_at = now()
-        where id = ${existing.id}`;
-    } else {
-      await tx`insert into bookings (session_id, player_id, guests) values (${session.id}, ${me.id}, ${guests})`;
-    }
+    const [row] = existing
+      ? await tx<{ id: number }[]>`
+          update bookings set status = 'booked', guests = ${guests}, source = 'self', paid = false,
+            membership_id = ${membershipId}, charged = false, confirmed_at = null, attended_at = null, updated_at = now()
+          where id = ${existing.id} returning id`
+      : await tx<{ id: number }[]>`
+          insert into bookings (session_id, player_id, guests, membership_id)
+          values (${session.id}, ${me.id}, ${guests}, ${membershipId}) returning id`;
+    // Joined after the lock: the slot is final straight away.
+    if (session.locked) await chargeBookings(tx, [row.id]);
     return ['booked'];
   });
   return back('/', ...result);
 }
 
+/** Back out. Only until 30 min before the start; after that the slot is paid for. */
 export async function withdraw(form: FormData) {
   const me = await requirePlayer();
-  const key = await withLockedSession(int(form, 'sessionId'), async (tx, session) => {
+  const key = await withLockedSession(int(form, 'sessionId'), async (tx, session): Promise<Key> => {
     const batch = (await getBatch(session.batch_id))!;
-    if (timing(session, batch).phase !== 'open') return 'started';
+    if (!timing(session, batch).canWithdraw) return 'tooLateToWithdraw';
     const [row] = await tx`
-      update bookings set status = 'withdrawn', updated_at = now()
-      where session_id = ${session.id} and player_id = ${me.id} and status = 'booked'
+      update bookings set status = 'withdrawn', confirmed_at = null, updated_at = now()
+      where session_id = ${session.id} and player_id = ${me.id} and status in ('booked', 'confirmed') and not charged
       returning id`;
     return row ? 'withdrawn' : 'noBooking';
   });
   return back('/', key);
 }
 
+/** "I'm coming": opens 12 h before the start. */
+export async function confirmSlot(form: FormData) {
+  const me = await requirePlayer();
+  const key = await withLockedSession(int(form, 'sessionId'), async (tx, session): Promise<Key> => {
+    const batch = (await getBatch(session.batch_id))!;
+    const tm = timing(session, batch);
+    if (!tm.canConfirm) return tm.phase === 'open' ? 'confirmNotYet' : 'bookingClosed';
+    const [row] = await tx`
+      update bookings set status = 'confirmed', confirmed_at = now(), updated_at = now()
+      where session_id = ${session.id} and player_id = ${me.id} and status = 'booked'
+      returning id`;
+    return row ? 'slotConfirmed' : 'noBooking';
+  });
+  return back('/', key);
+}
+
+/** "I played": the player's own attendance, from the start until the session closes. */
+export async function markAttended(form: FormData) {
+  const me = await requirePlayer();
+  const key = await withLockedSession(int(form, 'sessionId'), async (tx, session): Promise<Key> => {
+    const batch = (await getBatch(session.batch_id))!;
+    if (!timing(session, batch).canAttend) return 'attendClosed';
+    const [row] = await tx<{ id: number }[]>`
+      update bookings set status = 'present', attended_at = now(), updated_at = now()
+      where session_id = ${session.id} and player_id = ${me.id} and status in ('booked', 'confirmed')
+      returning id`;
+    if (row) await chargeBookings(tx, [row.id]); // normally already charged at the lock
+    return row ? 'attended' : 'noBooking';
+  });
+  return back('/', key);
+}
+
 // ---------- Membership request ----------
 
+/** Ask for a plan, or (wallet members) a top-up. Staff quote the amount, collect it and activate. */
 export async function applyMembership(form: FormData) {
   const me = await requirePlayer();
   const plan = await activePlan(me.id);
-  if (plan && planLive(plan)) return back('/', 'alreadyMember');
+  const kind = (['month', 'weekdays', 'weekends', 'wallet'] as const).find((k) => k === str(form, 'plan')) ?? 'month';
+  const live = plan && planLive(plan);
+  // A live wallet can be topped up; any other live plan has to run out first.
+  if (live && !(plan.kind === 'wallet' && kind === 'wallet')) return back('/', 'alreadyMember');
 
-  const batch = await getBatch(str(form, 'batchId'));
-  const kind = ['month', 'weekdays', 'weekends', 'other'].includes(str(form, 'plan')) ? str(form, 'plan') : 'month';
-  if (!batch) return back('/', 'errDays');
+  const sessions = Math.min(400, Math.max(0, int(form, 'sessions'))) || null;
+  if (kind === 'wallet' && !sessions) return back('/', 'errSessions');
+  const batch = kind === 'wallet' ? null : await getBatch(str(form, 'batchId'));
+  if (kind !== 'wallet' && !batch) return back('/', 'errDays');
   const [row] = await sql`
-    insert into membership_requests (player_id, batch_id, plan, note)
-    values (${me.id}, ${batch.id}, ${kind}, ${str(form, 'note').slice(0, 200) || null})
-    on conflict (player_id) where status = 'pending' do nothing
+    insert into membership_requests (player_id, batch_id, plan, sessions_requested, note)
+    values (${me.id}, ${batch?.id ?? null}, ${kind}, ${sessions}, ${str(form, 'note').slice(0, 200) || null})
+    on conflict (player_id) where status in ('pending', 'quoted') do nothing
     returning id`;
   return back('/', row ? 'applyPending' : 'requestExists');
+}
+
+/** Withdraw your own open request. */
+export async function cancelRequest() {
+  const me = await requirePlayer();
+  await sql`
+    update membership_requests set status = 'rejected', handled_at = now()
+    where player_id = ${me.id} and status in ('pending', 'quoted')`;
+  return back('/', 'requestCancelled');
 }

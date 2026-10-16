@@ -44,26 +44,32 @@ export type Session = {
   date: string;
   starts_at: Date;
   capacity: number;
+  locked: boolean;
   closed: boolean;
   cancelled: boolean;
 };
 
+export type PlanType = 'fixed' | 'wallet';
+
 export type Membership = {
   id: number;
   player_id: number;
-  batch_id: string;
+  kind: PlanType;
+  batch_id: string | null; // null for wallet plans
   days: number[];
   sessions_total: number;
   sessions_used: number;
   starts_on: string;
   ends_on: string | null;
   note: string | null;
+  amount_rupees: number | null;
   status: 'active' | 'ended';
 };
 
-export type PlanKind = 'month' | 'weekdays' | 'weekends' | 'other';
+/** What a player asks for. 'wallet' = top up a balance usable in any batch, any day. */
+export type PlanKind = 'month' | 'weekdays' | 'weekends' | 'wallet';
 
-export type BookingStatus = 'booked' | 'withdrawn' | 'present' | 'no_show';
+export type BookingStatus = 'booked' | 'confirmed' | 'withdrawn' | 'present' | 'no_show';
 
 export type Booking = {
   id: number;
@@ -73,5 +79,6 @@ export type Booking = {
   status: BookingStatus;
   source: 'self' | 'auto';
   membership_id: number | null;
+  charged: boolean;
   paid: boolean;
 };

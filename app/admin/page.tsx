@@ -3,6 +3,7 @@ import { sql, type Batch, type Player } from '@/lib/db';
 import { requireStaff } from '@/lib/auth';
 import { batchName, translator, type T } from '@/lib/i18n';
 import { getBatches } from '@/lib/sessions';
+import { fmtTime, istDate, istInstant } from '@/lib/time';
 import { removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
 import { Msg, Skeleton, Toolbar } from '../ui/Shared';
 
@@ -97,7 +98,7 @@ function BatchForm({ t, batch }: { t: T; batch: Batch }) {
   return (
     <form action={saveBatch} className="card stack">
       <input type="hidden" name="id" value={batch.id} />
-      <h2>{batchName(t, batch)} · {batch.start_time.slice(0, 5)}</h2>
+      <h2>{batchName(t, batch)} · {fmtTime(istInstant(istDate(), batch.start_time))}</h2>
       <div className="grid2">
         <label>{t('courts')}<input name="courts" type="number" min="0" defaultValue={batch.courts} /></label>
         <label>{t('perCourt')}<input name="playersPerCourt" type="number" min="1" defaultValue={batch.players_per_court} /></label>

@@ -1,7 +1,21 @@
 import { sql, type Batch, type Session, type Tx } from './db';
-import { dayOfWeek, istDate, istInstant } from './time';
+import { chargeBookings } from './members';
+import { istDate, istInstant } from './time';
 
-export type Phase = 'open' | 'live' | 'over' | 'cancelled';
+/**
+ * open:    voting open, can still back out
+ * locked:  from 30 min before start: can still join, can't back out, plan sessions are charged
+ * live:    playing now
+ * over:    finished; players confirm they came until the session closes
+ */
+export type Phase = 'open' | 'locked' | 'live' | 'over' | 'cancelled';
+
+/** Backing out closes this long before the start. */
+export const LOCK_MIN = 30;
+/** "I'm coming" confirmation opens this long before the start. */
+export const CONFIRM_FROM_H = 12;
+/** After the session ends, players have this long to confirm they came. */
+export const ATTEND_GRACE_H = 12;
 
 export async function getBatches() {
   return sql<Batch[]>`select * from batches order by start_time`;
@@ -17,16 +31,28 @@ export async function getSession(id: number) {
   return session ?? null;
 }
 
-/** open: bookable until start · live: playing now · over: finished */
-export function timing(session: Session, batch: Batch) {
+export function timing(session: Session, batch: Batch, now = Date.now()) {
   const start = session.starts_at;
   const end = new Date(start.getTime() + batch.duration_min * 60_000);
-  const now = Date.now();
+  const lockAt = new Date(start.getTime() - LOCK_MIN * 60_000);
+  const confirmFrom = new Date(start.getTime() - CONFIRM_FROM_H * 3_600_000);
+  const closeAt = new Date(end.getTime() + ATTEND_GRACE_H * 3_600_000);
   const phase: Phase = session.cancelled ? 'cancelled'
-    : now < start.getTime() ? 'open'
+    : now < lockAt.getTime() ? 'open'
+    : now < start.getTime() ? 'locked'
     : now < end.getTime() ? 'live'
     : 'over';
-  return { start, end, phase };
+  return {
+    start, end, lockAt, confirmFrom, closeAt, phase,
+    /** Can join (vote) now. */
+    canBook: phase === 'open' || phase === 'locked',
+    /** Can back out now. */
+    canWithdraw: phase === 'open',
+    /** Can say "I'm coming" now. */
+    canConfirm: (phase === 'open' || phase === 'locked') && now >= confirmFrom.getTime(),
+    /** Can say "I played" now. */
+    canAttend: (phase === 'live' || phase === 'over') && !session.closed && now < closeAt.getTime(),
+  };
 }
 
 /** The batch's next session that hasn't ended yet (today's or tomorrow's), created on first use. */
@@ -45,52 +71,70 @@ async function upcomingSession(batch: Batch): Promise<Session> {
   throw new Error('unreachable: tomorrow always starts in the future');
 }
 
-/** Members are IN by default on their plan days. Players who withdrew keep their 'withdrawn' row, so they aren't re-added. */
-async function autoBookMembers(session: Session) {
-  if (session.cancelled || Date.now() >= session.starts_at.getTime()) return;
-  await sql`
-    insert into bookings (session_id, player_id, source)
-    select ${session.id}, m.player_id, 'auto' from memberships m
-    where m.status = 'active' and m.batch_id = ${session.batch_id}
-      and m.sessions_used < m.sessions_total
-      and m.starts_on <= ${session.date} and (m.ends_on is null or m.ends_on >= ${session.date})
-      and ${dayOfWeek(session.date)} = any(m.days)
-    on conflict (session_id, player_id) do nothing`;
+/**
+ * 30 min before start the slot is final: plan sessions are taken off the balance.
+ * The `not locked` update makes this run once per session even with concurrent requests.
+ */
+async function lockDueSessions() {
+  await sql.begin(async (tx) => {
+    const locked = await tx<{ id: number }[]>`
+      update sessions set locked = true
+      where not locked and not cancelled and starts_at <= now() + make_interval(mins => ${LOCK_MIN})
+      returning id`;
+    if (locked.length === 0) return;
+    const due = await tx<{ id: number }[]>`
+      select id from bookings
+      where session_id = any(${locked.map((s) => s.id)}::int[]) and membership_id is not null
+        and not charged and status in ('booked', 'confirmed')`;
+    await chargeBookings(tx, due.map((b) => b.id));
+  });
 }
 
-/** Sessions that have ended: anyone still 'booked' (not ticked present) becomes a no-show. */
+/** Attendance window over: anyone who didn't confirm they came becomes a no-show (the slot stays charged). */
 async function closeFinishedSessions() {
   await sql`
     with done as (
       update sessions s set closed = true
       from batches b
       where s.batch_id = b.id and not s.closed
-        and s.starts_at + make_interval(mins => b.duration_min) <= now()
+        and s.starts_at + make_interval(mins => b.duration_min) + make_interval(hours => ${ATTEND_GRACE_H}) <= now()
       returning s.id
     )
     update bookings set status = 'no_show', updated_at = now()
-    where status = 'booked' and session_id in (select id from done)`;
+    where status in ('booked', 'confirmed') and session_id in (select id from done)`;
 }
 
-/** Upcoming session for every batch, with member auto-bookings applied. Cheap enough to run per request. */
-export async function upcomingSessions() {
+/** Keeps session state current. Cheap enough to run per request. */
+export async function sweep() {
+  await lockDueSessions();
   await closeFinishedSessions();
+}
+
+/** Upcoming session for every batch. */
+export async function upcomingSessions() {
+  await sweep();
   const batches = await getBatches();
-  return Promise.all(
-    batches.map(async (batch) => {
-      const session = await upcomingSession(batch);
-      await autoBookMembers(session);
-      return { batch, session };
-    }),
-  );
+  const list = await Promise.all(batches.map(async (batch) => ({ batch, session: await upcomingSession(batch) })));
+  return list.sort((a, b) => a.session.starts_at.getTime() - b.session.starts_at.getTime());
+}
+
+/** Sessions that have started, where this player still has to confirm they came. */
+export async function awaitingAttendance(playerId: number) {
+  return sql<(Session & { guests: number; batch: Batch })[]>`
+    select s.*, b.guests, to_jsonb(bt) as batch
+    from bookings b join sessions s on s.id = b.session_id join batches bt on bt.id = s.batch_id
+    where b.player_id = ${playerId} and b.status in ('booked', 'confirmed')
+      and not s.closed and not s.cancelled and s.starts_at <= now()
+    order by s.starts_at`;
 }
 
 export const seats = (b: { guests: number }) => 1 + b.guests;
-export const isActive = (b: { status: string }) => b.status === 'booked' || b.status === 'present';
+export const ACTIVE = ['booked', 'confirmed', 'present'] as const;
+export const isActive = (b: { status: string }) => (ACTIVE as readonly string[]).includes(b.status);
 
 export async function bookedSeats(tx: Tx | typeof sql, sessionId: number) {
   const [row] = await tx<{ n: number }[]>`
     select coalesce(sum(1 + guests), 0)::int as n from bookings
-    where session_id = ${sessionId} and status in ('booked', 'present')`;
+    where session_id = ${sessionId} and status in ('booked', 'confirmed', 'present')`;
   return row.n;
 }

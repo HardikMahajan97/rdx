@@ -57,16 +57,16 @@ export function AttendanceChart({ id, data, lang, labels }: {
                 {showedH > 0 && <path d={bar(x, showedY, bw, showedH)} fill="var(--red)" />}
                 {missedH > 0 && (
                   <g>
-                    <path d={bar(x + bw + 2, missedY, bw, missedH)} fill="var(--red)" fillOpacity={0.35} />
+                    <path d={bar(x + bw + 2, missedY, bw, missedH)} fill="var(--muted)" fillOpacity={0.3} />
                     <defs>
                       <pattern id={`hatch-${id}-${i}`} patternUnits="userSpaceOnUse" width={4} height={4}>
-                        <line x1={0} y1={4} x2={4} y2={0} stroke="var(--red)" strokeWidth={1} opacity={0.5} />
+                        <line x1={0} y1={4} x2={4} y2={0} stroke="var(--muted)" strokeWidth={1} opacity={0.6} />
                       </pattern>
                     </defs>
                     <rect x={x + bw + 2} y={missedY} width={bw} height={missedH} fill={`url(#hatch-${id}-${i})`} />
                   </g>
                 )}
-                <text x={x + bw} y={yBase + 14} className="axis" textAnchor="middle" fontSize={9}>{fmtDate(d.date, lang).slice(5)}</text>
+                <text x={x + bw} y={yBase + 14} className="axis" textAnchor="middle" fontSize={10}>{fmtDate(d.date, lang).slice(5)}</text>
               </g>
             );
           })}
@@ -74,15 +74,15 @@ export function AttendanceChart({ id, data, lang, labels }: {
         {/* y axis labels */}
         <g className="axis" textAnchor="end">
           {[0, 2, 4, 6, 8].filter((n) => n <= niceMax(maxVal)).map((n) => (
-            <text key={n} x={left - 4} y={top + plotH - n * scale + 3} fontSize={9} fill="var(--muted)">{n}</text>
+            <text key={n} x={left - 4} y={top + plotH - n * scale + 3} fontSize={10} fill="var(--muted)">{n}</text>
           ))}
         </g>
         {/* legend */}
         <g>
           <rect x={left} y={top - 18} width={14} height={10} fill="var(--red)" rx={2} />
-          <text x={left + 18} y={top - 10} className="lbl" fontSize={10} fill="var(--text)">{labels.showed}</text>
-          <rect x={left + 80} y={top - 18} width={14} height={10} fill="var(--red)" fillOpacity={0.35} rx={2} />
-          <text x={left + 98} y={top - 10} className="lbl" fontSize={10} fill="var(--text)">{labels.missed}</text>
+          <text x={left + 18} y={top - 10} className="lbl" fontSize={11} fill="var(--text)">{labels.showed}</text>
+          <rect x={left + 80} y={top - 18} width={14} height={10} fill="var(--muted)" fillOpacity={0.3} rx={2} />
+          <text x={left + 98} y={top - 10} className="lbl" fontSize={11} fill="var(--text)">{labels.missed}</text>
         </g>
       </svg>
       {/* Table view for mobile/overflow */}

@@ -1,13 +1,14 @@
 import { Suspense } from 'react';
-import { sql, type Membership } from '@/lib/db';
+import { sql, type Membership, type PlanKind } from '@/lib/db';
 import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
 import { upcomingSessions } from '@/lib/sessions';
-import { applyMembership, enterPin, join, leave, setPin } from './actions';
+import { cancelRequest, enterPin, join, leave, setPin } from './actions';
+import { ApplyForm } from './ui/ApplyForm';
 import { Submit } from './ui/Client';
-import { Msg, Skeleton, Toolbar } from './ui/Shared';
-import { FloaterSessions, MemberHome, StaffDashboard } from './ui/Views';
+import { Loader, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
+import { AttendancePrompts, PlanCard, PlayerSessions, StaffDashboard } from './ui/Views';
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
 
@@ -36,8 +37,11 @@ async function HomeContent({ searchParams }: Props) {
     return (
       <div style={narrow}>
         {top}
-        <h1>{t('welcome')}</h1>
-        <p className="muted">{t('welcomeHint')}</p>
+        <div className="welcome">
+          <Loader />
+          <h1>{t('welcome')}</h1>
+          <p className="muted">{t('welcomeHint')}</p>
+        </div>
         <form action={join} className="card stack">
           <label>
             {t('phone')}
@@ -84,50 +88,62 @@ async function HomeContent({ searchParams }: Props) {
     return <>{top}<StaffDashboard me={me} t={t} lang={lang} upcoming={upcoming} /></>;
   }
 
-  const [plan] = await sql<Membership[]>`select * from memberships where player_id = ${me.id} and status = 'active'`;
-  const switchUser = (
-    <form action={leave} style={{ marginTop: 24 }}>
-      <button className="btn-ghost btn-sm">{t('switchUser', { name: me.name.split(' ')[0] })}</button>
-    </form>
-  );
+  const [active] = await sql<Membership[]>`select * from memberships where player_id = ${me.id} and status = 'active'`;
+  const plan = active && planLive(active) ? active : null;
+  const [request] = await sql<{ plan: PlanKind; status: 'pending' | 'quoted'; amount_rupees: number | null; sessions_requested: number | null }[]>`
+    select plan, status, amount_rupees, sessions_requested from membership_requests
+    where player_id = ${me.id} and status in ('pending', 'quoted')`;
+  const first = me.name.split(' ')[0];
+  // Fixed plans have to run out before a new one; wallets can be topped up any time.
+  const canApply = !plan || plan.kind === 'wallet';
+  const membership = request ? (
+    <section className="card request-card">
+      <div className="eyebrow">{t(`plan_${request.plan}`)}{request.sessions_requested ? ` · ${t('nSessions', { n: request.sessions_requested })}` : ''}</div>
+      {request.status === 'quoted'
+        ? <div className="status info">{t('quotedPay', { amount: request.amount_rupees ?? 0 })}</div>
+        : <div className="status warn">{t('applyPending')}</div>}
+      <form action={cancelRequest}><Submit className="btn-ghost btn-sm">{t('cancelRequest')}</Submit></form>
+    </section>
+  ) : canApply ? (
+    <details className={`card apply-card${plan ? '' : ' promo'}`}>
+      <summary>
+        {plan ? t('topUpTitle') : (
+          <span className="promo-head">
+            <Rally />
+            <span className="promo-title">{t('applyTitle')}</span>
+            <span className="promo-sub">{t('promoHint')}</span>
+          </span>
+        )}
+      </summary>
+      <p className="muted">{plan ? t('topUpHint') : t('applyHint')}</p>
+      <ApplyForm walletOnly={!!plan} batches={upcoming.map(({ batch }) => ({ id: batch.id, name: batchName(t, batch) }))}
+        labels={{
+          batch: t('batch'), plan: t('plan'), month: t('plan_month'), weekdays: t('plan_weekdays'), weekends: t('plan_weekends'),
+          wallet: t('plan_wallet'), walletHint: t('walletHint'), sessions: t('sessionsWanted'), note: t('note'),
+          submit: plan ? t('topUpSubmit') : t('applySubmit'),
+        }} />
+    </details>
+  ) : null;
 
-  if (plan && planLive(plan)) {
-    return <>{top}<MemberHome me={me} t={t} lang={lang} plan={plan} upcoming={upcoming} />{switchUser}</>;
-  }
-
-  const [pending] = await sql<{ id: number }[]>`
-    select id from membership_requests where player_id = ${me.id} and status = 'pending'`;
   return (
     <>
       {top}
-      <div className="toolbar">
-        <h1>{t('hi', { name: me.name.split(' ')[0] })}</h1>
-        <span className="pill">{t('floater')}</span>
+      <div className="hero">
+        <div>
+          <div className="eyebrow">{plan ? (plan.kind === 'wallet' ? t('walletTitle') : t('member')) : t('floater')}</div>
+          <h1>{t('hi', { name: first })}</h1>
+        </div>
       </div>
-      <FloaterSessions me={me} t={t} lang={lang} upcoming={upcoming} />
-      {pending ? <div className="status warn">{t('applyPending')}</div> : (
-        <details className="card" style={{ maxWidth: 640 }}>
-          <summary>{t('applyTitle')}</summary>
-          <p className="muted">{t('applyHint')}</p>
-          <form action={applyMembership} className="stack">
-            <label>
-              {t('batch')}
-              <select name="batchId">
-                {upcoming.map(({ batch }) => <option key={batch.id} value={batch.id}>{batchName(t, batch)}</option>)}
-              </select>
-            </label>
-            <label>
-              {t('plan')}
-              <select name="plan">
-                {(['month', 'weekdays', 'weekends', 'other'] as const).map((p) => <option key={p} value={p}>{t(`plan_${p}`)}</option>)}
-              </select>
-            </label>
-            <label>{t('note')}<input name="note" maxLength={200} /></label>
-            <Submit className="btn-primary">{t('applySubmit')}</Submit>
-          </form>
-        </details>
-      )}
-      {switchUser}
+      {/* Floaters see the membership offer first; members find top-ups below their sessions. */}
+      {!plan && membership}
+      {plan && <PlanCard t={t} lang={lang} plan={plan} batches={upcoming.map((u) => u.batch)} />}
+      <AttendancePrompts me={me} t={t} lang={lang} />
+      <PlayerSessions me={me} t={t} lang={lang} plan={plan} upcoming={upcoming} />
+      {plan && membership}
+
+      <form action={leave} className="switch-user">
+        <button className="btn-ghost btn-sm">{t('switchUser', { name: first })}</button>
+      </form>
     </>
   );
 }

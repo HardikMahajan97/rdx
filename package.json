@@ -8,6 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "db:setup": "node --env-file=.env.local scripts/setup.mjs",
+    "db:setup:prod": "node --env-file=.env.production scripts/setup.mjs",
+    "db:check": "node --env-file=.env.local scripts/check-db.mjs",
+    "db:check:prod": "node --env-file=.env.production scripts/check-db.mjs",
+    "db:dump": "node scripts/migrate.mjs dump --source=local --out=dump.sql",
+    "db:restore": "node scripts/migrate.mjs restore --target=neon --in=dump.sql",
+    "db:migrate": "node scripts/migrate.mjs dump --source=local | node scripts/migrate.mjs restore --target=neon",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
