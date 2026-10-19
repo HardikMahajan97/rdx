@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { sql, type Booking, type Lang, type Membership, type Player } from '@/lib/db';
-import { back, int, safePath, str, withLockedSession } from '@/lib/action-utils';
+import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
   currentPlayer, getLang, hashPin, isStaff, LANGS, lockStaff, normalizePhone, pinProblem,
   requirePlayer, setLangCookie, signIn, signOut, unlockStaff, verifyPin,
@@ -32,16 +32,25 @@ export async function join(form: FormData) {
 
   const phone = normalizePhone(str(form, 'phone'));
   if (!phone) return back('/', 'errPhone');
-  const name = str(form, 'name').slice(0, 60);
-
   let [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
   if (!player) {
+    const name = personName(form);
     if (!name) return back('/', 'errName');
     [player] = await sql<Player[]>`
-      insert into players (name, phone, lang) values (${name}, ${phone}, ${await getLang()}) returning *`;
+      insert into players (first_name, last_name, phone, lang)
+      values (${name.first}, ${name.last}, ${phone}, ${await getLang()}) returning *`;
   }
   await signIn(player.id);
   redirect('/'); // staff land on the PIN screen
+}
+
+/** Players fix their own first and last name. */
+export async function updateName(form: FormData) {
+  const me = await requirePlayer();
+  const name = personName(form);
+  if (!name) return back('/', 'errName');
+  await sql`update players set first_name = ${name.first}, last_name = ${name.last} where id = ${me.id}`;
+  return back('/', 'nameSaved');
 }
 
 export async function leave() {

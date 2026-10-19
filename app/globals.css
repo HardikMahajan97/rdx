@@ -436,6 +436,8 @@ th { color: var(--muted); font-weight: 600; }
 @keyframes hit-left { 0%, 90% { transform: rotate(-8deg); } 96% { transform: rotate(-38deg); } 100% { transform: rotate(-8deg); } }
 @keyframes hit-right { 0%, 42% { transform: rotate(8deg); } 48% { transform: rotate(38deg); } 56%, 100% { transform: rotate(8deg); } }
 
+.name-card summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
 /* ---------- Plan card ---------- */
 .plan-card { display: flex; gap: 18px; align-items: center; }
 .plan-ring {

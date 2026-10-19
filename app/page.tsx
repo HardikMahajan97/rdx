@@ -4,7 +4,7 @@ import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
 import { upcomingSessions } from '@/lib/sessions';
-import { cancelRequest, enterPin, join, leave, setPin } from './actions';
+import { cancelRequest, enterPin, join, leave, setPin, updateName } from './actions';
 import { ApplyForm } from './ui/ApplyForm';
 import { Submit } from './ui/Client';
 import { Loader, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
@@ -47,10 +47,11 @@ async function HomeContent({ searchParams }: Props) {
             {t('phone')}
             <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
           </label>
-          <label>
-            {t('name')} <span>{t('nameHint')}</span>
-            <input name="name" autoComplete="name" maxLength={60} />
-          </label>
+          <div className="eyebrow">{t('nameHint')}</div>
+          <div className="grid2">
+            <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
+            <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
+          </div>
           <Submit className="btn-big">{t('continue')}</Submit>
         </form>
       </div>
@@ -76,7 +77,7 @@ async function HomeContent({ searchParams }: Props) {
           )}
           <Submit className="btn-big">{gate === 'set' ? t('pinSave') : t('unlock')}</Submit>
         </form>
-        <form action={leave}><button className="btn-ghost btn-sm">{t('switchUser', { name: me.name.split(' ')[0] })}</button></form>
+        <form action={leave}><button className="btn-ghost btn-sm">{t('switchUser', { name: me.first_name })}</button></form>
       </div>
     );
   }
@@ -93,7 +94,7 @@ async function HomeContent({ searchParams }: Props) {
   const [request] = await sql<{ plan: PlanKind; status: 'pending' | 'quoted'; amount_rupees: number | null; sessions_requested: number | null }[]>`
     select plan, status, amount_rupees, sessions_requested from membership_requests
     where player_id = ${me.id} and status in ('pending', 'quoted')`;
-  const first = me.name.split(' ')[0];
+  const first = me.first_name;
   // Fixed plans have to run out before a new one; wallets can be topped up any time.
   const canApply = !plan || plan.kind === 'wallet';
   const membership = request ? (
@@ -141,6 +142,16 @@ async function HomeContent({ searchParams }: Props) {
       <PlayerSessions me={me} t={t} lang={lang} plan={plan} upcoming={upcoming} />
       {plan && membership}
 
+      <details className="card name-card">
+        <summary>{t('yourName')}{me.last_name === 'x' && <span className="pill warn">{t('addLastName')}</span>}</summary>
+        <form action={updateName} className="stack">
+          <div className="grid2">
+            <label>{t('firstName')}<input name="firstName" defaultValue={me.first_name} autoComplete="given-name" maxLength={40} required /></label>
+            <label>{t('lastName')}<input name="lastName" defaultValue={me.last_name === 'x' ? '' : me.last_name} autoComplete="family-name" maxLength={40} required /></label>
+          </div>
+          <Submit className="btn-primary">{t('saveName')}</Submit>
+        </form>
+      </details>
       <form action={leave} className="switch-user">
         <button className="btn-ghost btn-sm">{t('switchUser', { name: first })}</button>
       </form>

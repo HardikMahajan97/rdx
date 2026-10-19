@@ -12,7 +12,10 @@ create table if not exists batches (
 
 create table if not exists players (
   id         serial primary key,
-  name       text not null,
+  first_name text not null,
+  last_name  text not null,                      -- 'x' = not given yet (filled in for older accounts)
+  -- Display name, kept by Postgres: "First Last", or just "First" while the last name is the 'x' filler.
+  name       text generated always as (first_name || coalesce(' ' || nullif(last_name, 'x'), '')) stored,
   phone      text not null unique,               -- 10 digits
   role       text not null default 'player' check (role in ('player', 'core', 'admin')),
   pin_hash   text,                               -- scrypt; core/admin set it on first sign-in
@@ -110,6 +113,18 @@ create table if not exists rate_limits (
 );
 
 -- ---------- Upgrades for databases created by earlier versions ----------
+
+-- One name column → first_name + last_name. The old full name becomes first_name; last_name gets the 'x' filler.
+do $$ begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'players' and column_name = 'name' and is_generated = 'NEVER') then
+    alter table players rename column name to first_name;
+  end if;
+end $$;
+alter table players add column if not exists last_name text not null default 'x';
+alter table players alter column last_name drop default;
+alter table players add column if not exists name text
+  generated always as (first_name || coalesce(' ' || nullif(last_name, 'x'), '')) stored;
 
 alter table memberships add column if not exists kind text not null default 'fixed';
 alter table memberships add column if not exists amount_rupees int;

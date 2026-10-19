@@ -125,7 +125,7 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
       <div className="hero">
         <div>
           <div className="eyebrow">{t('navDashboard')}</div>
-          <h1>{t('hi', { name: me.name.split(' ')[0] })}</h1>
+          <h1>{t('hi', { name: me.first_name })}</h1>
         </div>
         <span className="pill ok live-dot">{t('liveNote')}</span>
       </div>

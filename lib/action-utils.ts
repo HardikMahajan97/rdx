@@ -6,6 +6,12 @@ import type { Key } from './i18n';
 
 export const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 export const int = (f: FormData, k: string) => Math.trunc(Number(f.get(k)) || 0);
+/** First and last name from a form; null if either is missing. */
+export function personName(f: FormData) {
+  const first = str(f, 'firstName').slice(0, 40);
+  const last = str(f, 'lastName').slice(0, 40);
+  return first && last ? { first, last } : null;
+}
 /** Only allow redirecting back to our own pages. */
 export const safePath = (p: string) => (p.startsWith('/') && !p.startsWith('//') ? p : '/');
 

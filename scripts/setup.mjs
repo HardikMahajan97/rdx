@@ -2,7 +2,7 @@
 // Admin and core set their own PIN the first time they sign in.
 import postgres from 'postgres';
 
-const sql = postgres(process.env.DATABASE_URL);
+const sql = postgres(process.env.DATABASE_URL, { onnotice: () => {} }); // "already exists, skipping" notices are expected on re-runs
 await sql.file(new URL('../db/schema.sql', import.meta.url).pathname);
 
 await sql`
@@ -16,8 +16,10 @@ for (const [role, phone, name] of [
   ['core', process.env.CORE_PHONE, process.env.CORE_NAME || 'Core member'],
 ]) {
   if (!phone) continue;
+  // ADMIN_NAME / CORE_NAME: first word is the first name, the rest the last name ('x' if none).
+  const [first, ...rest] = name.trim().split(/\s+/);
   await sql`
-    insert into players (name, phone, role) values (${name}, ${phone}, ${role})
+    insert into players (first_name, last_name, phone, role) values (${first}, ${rest.join(' ') || 'x'}, ${phone}, ${role})
     on conflict (phone) do update set role = excluded.role`;
   console.log(`${role}: ${phone} (sets PIN on first sign-in)`);
 }

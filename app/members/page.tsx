@@ -65,7 +65,7 @@ async function MembersContent({ searchParams }: Props) {
     order by p.name`;
 
   const labels = (submit: Key) => ({
-    phone: t('phone'), name: t('name'), batch: t('batch'), days: t('planType'), all: t('days_all'),
+    phone: t('phone'), firstName: t('firstName'), lastName: t('lastName'), batch: t('batch'), days: t('planType'), all: t('days_all'),
     weekdays: t('days_weekdays'), weekends: t('days_weekends'), custom: t('days_custom'), wallet: t('wallet'), walletHint: t('walletStaffHint'),
     sessions: t('sessions'), topUpSessions: t('topUpSessions'), wholeMonth: t('wholeMonth'),
     startsOn: t('startsOn'), endsOn: t('endsOn'), note: t('paymentNote'), amount: t('amountPaid'), submit: t(submit),

@@ -3,7 +3,7 @@
 import { refresh } from 'next/cache';
 import { sql, type Membership, type Player, type PlanType } from '@/lib/db';
 import { normalizePhone, requireStaff } from '@/lib/auth';
-import { back, int, str, withLockedSession } from '@/lib/action-utils';
+import { back, int, personName, str, withLockedSession } from '@/lib/action-utils';
 import { ALL_DAYS, ledger, planLive, recheckBookings, refundBookings } from '@/lib/members';
 import { getBatch } from '@/lib/sessions';
 import { istDate } from '@/lib/time';
@@ -117,9 +117,10 @@ export async function savePlan(form: FormData) {
       if (!phone) return ['errPhone'];
       [player] = await tx<Player[]>`select * from players where phone = ${phone}`;
       if (!player) {
-        const name = str(form, 'name').slice(0, 60);
+        const name = personName(form);
         if (!name) return ['errName'];
-        [player] = await tx<Player[]>`insert into players (name, phone) values (${name}, ${phone}) returning *`;
+        [player] = await tx<Player[]>`
+          insert into players (first_name, last_name, phone) values (${name.first}, ${name.last}, ${phone}) returning *`;
       }
     }
     if (!player) return ['noRequests'];
@@ -179,7 +180,7 @@ export async function rejectRequest(form: FormData) {
 export async function saveStaff(form: FormData) {
   const admin = await requireStaff('staff');
   const phone = normalizePhone(str(form, 'phone'));
-  const name = str(form, 'name').slice(0, 60);
+  const name = personName(form);
   const role = str(form, 'role') === 'admin' ? 'admin' : 'core';
   if (!phone) back('/admin', 'errPhone');
   if (phone === admin.phone) back('/admin', 'errSelf');
@@ -188,7 +189,8 @@ export async function saveStaff(form: FormData) {
   if (!p && !name) back('/admin', 'errName');
   const [saved] = p
     ? await sql<Player[]>`update players set role = ${role} where id = ${p.id} returning *`
-    : await sql<Player[]>`insert into players (name, phone, role) values (${name}, ${phone!}, ${role}) returning *`;
+    : await sql<Player[]>`
+        insert into players (first_name, last_name, phone, role) values (${name!.first}, ${name!.last}, ${phone!}, ${role}) returning *`;
   back('/admin', 'staffSaved', { name: saved.name, role });
 }
 

@@ -37,7 +37,10 @@ async function AdminContent({ searchParams }: Props) {
         <p className="muted">{t('staffHint')}</p>
         <div className="grid2">
           <label>{t('phone')}<input name="phone" type="tel" inputMode="numeric" required /></label>
-          <label>{t('name')}<input name="name" maxLength={60} /></label>
+        </div>
+        <div className="grid2">
+          <label>{t('firstName')}<input name="firstName" maxLength={40} /></label>
+          <label>{t('lastName')}<input name="lastName" maxLength={40} /></label>
         </div>
         <label>
           {t('role')}

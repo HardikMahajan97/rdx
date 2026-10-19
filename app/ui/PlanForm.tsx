@@ -39,7 +39,7 @@ export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames
   withPhone?: boolean;
   /** Activating adds to the player's live wallet instead of creating a plan. */
   topUp?: boolean;
-  labels: Record<'phone' | 'name' | 'batch' | 'days' | 'all' | 'weekdays' | 'weekends' | 'custom' | 'wallet' | 'walletHint'
+  labels: Record<'phone' | 'firstName' | 'lastName' | 'batch' | 'days' | 'all' | 'weekdays' | 'weekends' | 'custom' | 'wallet' | 'walletHint'
     | 'sessions' | 'topUpSessions' | 'wholeMonth' | 'startsOn' | 'endsOn' | 'note' | 'amount' | 'submit', string>;
   dayNames: string[]; // index 0 = Sun
 }) {
@@ -77,10 +77,13 @@ export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames
       <input type="hidden" name="kind" value={wallet ? 'wallet' : 'fixed'} />
       {!wallet && days.map((d) => <input key={d} type="hidden" name="days" value={d} />)}
       {withPhone && (
-        <div className="grid2">
+        <>
           <label>{labels.phone}<input name="phone" type="tel" inputMode="numeric" required /></label>
-          <label>{labels.name}<input name="name" /></label>
-        </div>
+          <div className="grid2">
+            <label>{labels.firstName}<input name="firstName" maxLength={40} /></label>
+            <label>{labels.lastName}<input name="lastName" maxLength={40} /></label>
+          </div>
+        </>
       )}
       {!topUp && (
         <div>
