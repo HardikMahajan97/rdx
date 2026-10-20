@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { Anek_Devanagari, Mukta } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 // Both families cover Latin and Devanagari, so Marathi and Hindi render in the same style.
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </Link>
         </header>
         <main>{children}</main>
+        <Analytics />
       </body>
     </html>
   );
