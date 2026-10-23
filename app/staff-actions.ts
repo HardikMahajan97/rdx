@@ -1,18 +1,19 @@
 'use server';
 
 import { refresh } from 'next/cache';
-import { sql, type Membership, type Player, type PlanType } from '@/lib/db';
-import { normalizePhone, requireStaff } from '@/lib/auth';
-import { back, int, personName, str, withLockedSession } from '@/lib/action-utils';
-import { ALL_DAYS, ledger, planLive, recheckBookings, refundBookings } from '@/lib/members';
-import { getBatch } from '@/lib/sessions';
+import { sql, type Booking, type BookingStatus, type Membership, type Player, type PlanType } from '@/lib/db';
+import { canResetPin, normalizePhone, requireStaff } from '@/lib/auth';
+import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
+import { ALL_DAYS, assignPlan, chargeBookings, ledger, planLive, recheckBookings, refundBookings } from '@/lib/members';
+import { getBatch, staffStatuses, timing } from '@/lib/sessions';
+import { clear } from '@/lib/ratelimit';
 import { istDate } from '@/lib/time';
 import type { Key } from '@/lib/i18n';
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 // ---------- Roster ----------
-// Attendance is the players' own job now ("I'm coming" / "I played"); staff only track money and courts.
+// Players mark their own attendance ("I'm coming" / "I played"); staff can correct it when someone forgets or can't.
 
 /** Fee collected, or (for someone who backed out after paying) refunded. */
 export async function togglePaid(form: FormData) {
@@ -22,6 +23,45 @@ export async function togglePaid(form: FormData) {
     update bookings set paid = not paid, updated_at = now()
     where id = ${int(form, 'bookingId')} and session_id = ${sid}`;
   refresh(); // re-render the roster in place, no navigation or scroll jump
+}
+
+/**
+ * Staff correct a player's status (forgot to tap, tapped by mistake, called in sick). Allowed statuses depend on
+ * the time (staffStatuses). Plan sessions follow the same rule as everywhere else: once the slot is final
+ * (30 min before start) any booking that isn't "backed out" uses its plan session.
+ *   → backed out: a used plan session goes back on the balance; a floater who paid shows up as a refund.
+ *   ← back in from "backed out": plan cover is worked out again, since the balance may have changed.
+ * Reviving someone can take the session over capacity; the roster shows that, and staff can add a court.
+ */
+export async function setBookingStatus(form: FormData) {
+  const staff = await requireStaff('roster');
+  const sid = int(form, 'sessionId');
+  const status = str(form, 'status') as BookingStatus;
+  const key = await withLockedSession(sid, async (tx, session): Promise<Key> => {
+    const batch = (await getBatch(session.batch_id))!;
+    const { phase } = timing(session, batch);
+    if (!staffStatuses(phase).includes(status)) return 'statusNotNow';
+    const [b] = await tx<Booking[]>`
+      select * from bookings where id = ${int(form, 'bookingId')} and session_id = ${sid} for update`;
+    if (!b) return 'noBooking';
+    if (b.status === status) return 'statusSaved';
+
+    await tx`
+      update bookings set status = ${status}, checked_by = ${staff.id}, updated_at = now(),
+        confirmed_at = case when ${status} = 'booked' then null
+                            when ${status} in ('confirmed', 'present') then coalesce(confirmed_at, now())
+                            else confirmed_at end,
+        attended_at = case when ${status} = 'present' then coalesce(attended_at, now()) else null end
+      where id = ${b.id}`;
+    if (status === 'withdrawn') {
+      await refundBookings(tx, [b.id], staff.id);
+    } else {
+      if (b.status === 'withdrawn') await assignPlan(tx, b.id);
+      if (phase !== 'open') await chargeBookings(tx, [b.id]);
+    }
+    return 'statusSaved';
+  });
+  back(`/roster?sid=${sid}`, key);
 }
 
 export async function changeCourts(form: FormData) {
@@ -48,6 +88,25 @@ export async function cancelSession(form: FormData) {
     await tx`update sessions set cancelled = true, locked = true, closed = true where id = ${sid}`;
   });
   back(`/roster?sid=${sid}`, 'cancelDone');
+}
+
+// ---------- Players ----------
+
+/** Core/admin register a floater. They sign in with this number and set their own PIN, like staff do. */
+export async function addPlayer(form: FormData) {
+  await requireStaff('members');
+  const phone = normalizePhone(str(form, 'phone'));
+  const name = personName(form);
+  if (!phone) back('/members', 'errPhone');
+  if (!name) back('/members', 'errName');
+  const [added] = await sql<Player[]>`
+    insert into players (first_name, last_name, phone) values (${name.first}, ${name.last}, ${phone})
+    on conflict (phone) do nothing returning *`;
+  if (!added) {
+    const [p] = await sql<Player[]>`select * from players where phone = ${phone}`;
+    back('/members', 'errPlayerExists', { name: p?.name ?? phone });
+  }
+  back('/members', 'playerAdded', { name: added.name });
 }
 
 // ---------- Memberships ----------
@@ -194,10 +253,38 @@ export async function saveStaff(form: FormData) {
   back('/admin', 'staffSaved', { name: saved.name, role });
 }
 
+/** Clear someone's PIN (they forgot it). They're signed out everywhere and set a new one at next sign-in. */
 export async function resetPin(form: FormData) {
-  await requireStaff('staff');
-  await sql`update players set pin_hash = null where id = ${int(form, 'id')} and role <> 'player'`;
-  back('/admin', 'pinReset');
+  const staff = await requireStaff('pins');
+  const path = safePath(str(form, 'back') || '/members');
+  const [target] = await sql<Player[]>`select * from players where id = ${int(form, 'id')}`;
+  if (!target || !canResetPin(staff, target)) back(path, 'errCantReset');
+  await sql`update players set pin_hash = null, pin_reset_requested_at = null where id = ${target.id}`;
+  await clear(`pin:${target.id}`);
+  back(path, 'pinReset', { name: target.name });
+}
+
+/** Same, but found by phone number, for someone who calls instead of tapping "Forgot PIN". */
+export async function resetPinByPhone(form: FormData) {
+  const staff = await requireStaff('pins');
+  const phone = normalizePhone(str(form, 'phone'));
+  if (!phone) back('/members', 'errPhone');
+  const [target] = await sql<Player[]>`select * from players where phone = ${phone}`;
+  if (!target) back('/members', 'errNoPlayer');
+  if (!canResetPin(staff, target)) back('/members', 'errCantReset');
+  await sql`update players set pin_hash = null, pin_reset_requested_at = null where id = ${target.id}`;
+  await clear(`pin:${target.id}`);
+  back('/members', 'pinReset', { name: target.name });
+}
+
+/** Ignore a "Forgot PIN" request (e.g. it wasn't really them). Their PIN stays as it is. */
+export async function dismissPinRequest(form: FormData) {
+  const staff = await requireStaff('pins');
+  const [target] = await sql<Player[]>`select * from players where id = ${int(form, 'id')}`;
+  if (target && canResetPin(staff, target)) {
+    await sql`update players set pin_reset_requested_at = null where id = ${target.id}`;
+  }
+  back('/members', 'pinRequestDismissed');
 }
 
 export async function removeStaff(form: FormData) {

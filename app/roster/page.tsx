@@ -5,9 +5,9 @@ import { can, requireStaff } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLeft } from '@/lib/members';
 import { snapshot } from '@/lib/snapshot';
-import { getBatch, getSession, timing, upcomingSessions } from '@/lib/sessions';
+import { getBatch, getSession, staffStatuses, timing, upcomingSessions } from '@/lib/sessions';
 import { fmtDate, fmtTime, istDate } from '@/lib/time';
-import { cancelSession, changeCourts, togglePaid } from '../staff-actions';
+import { cancelSession, changeCourts, setBookingStatus, togglePaid } from '../staff-actions';
 import { AutoRefresh, Submit } from '../ui/Client';
 import { CourtBoard } from '../ui/CourtBoard';
 import { initials, Msg, Skeleton, SlotHead, Tile, Toolbar } from '../ui/Shared';
@@ -37,6 +37,7 @@ async function RosterContent({ searchParams }: Props) {
   const batch = (await getBatch(session.batch_id))!;
   const { start, lockAt, closeAt, phase } = timing(session, batch);
   const snap = await snapshot(session, batch);
+  const settable = staffStatuses(phase);
   const left = snap.capacity - snap.booked;
 
   const [prev] = await sql<{ id: number }[]>`
@@ -91,6 +92,7 @@ async function RosterContent({ searchParams }: Props) {
         <section className="card">
           <h2>{t('players')}</h2>
           <p className="muted">{t('rosterHint', { lock: fmtTime(lockAt), time: fmtTime(closeAt) })}</p>
+          {settable.length > 0 && snap.rows.length > 0 && <p className="hint">{t('staffStatusHint')}</p>}
           {snap.rows.length === 0 && <p className="muted">{t('noBookings')}</p>}
           <ul className="list roster">
             {snap.rows.map((r) => (
@@ -118,6 +120,19 @@ async function RosterContent({ searchParams }: Props) {
                   {r.no_shows > 0 && <span className="pill bad">{t('pastNoShows', { n: r.no_shows })}</span>}
                   <a className="muted" href={`tel:${r.phone}`}>{r.phone}</a>
                 </div>
+                {settable.some((st) => st !== r.status) && (
+                  <details className="status-edit">
+                    <summary>{t('changeStatus')}</summary>
+                    <form action={setBookingStatus} className="row">
+                      {hidden(r.id)}
+                      {settable.filter((st) => st !== r.status).map((st) => (
+                        <Submit key={st} name="status" value={st} className={`btn-sm ${st === 'withdrawn' || st === 'no_show' ? 'btn-ghost' : ''}`}>
+                          {t(`st_${st}`)}
+                        </Submit>
+                      ))}
+                    </form>
+                  </details>
+                )}
               </li>
             ))}
           </ul>

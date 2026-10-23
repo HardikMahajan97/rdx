@@ -7,7 +7,7 @@ create table if not exists batches (
   duration_min      int  not null default 60,
   courts            int  not null,
   players_per_court int  not null default 4,
-  price_rupees      int  not null default 100    -- daily fee for floaters / friends
+  price_rupees      int  not null default 100    -- fee per hour for floaters / friends (charged per seat)
 );
 
 create table if not exists players (
@@ -18,7 +18,8 @@ create table if not exists players (
   name       text generated always as (first_name || coalesce(' ' || nullif(last_name, 'x'), '')) stored,
   phone      text not null unique,               -- 10 digits
   role       text not null default 'player' check (role in ('player', 'core', 'admin')),
-  pin_hash   text,                               -- scrypt; core/admin set it on first sign-in
+  pin_hash   text,                               -- scrypt; everyone sets it at first sign-in, and again after a reset
+  pin_reset_requested_at timestamptz,            -- "Forgot PIN": waiting for core/admin to reset it
   lang       text not null default 'en' check (lang in ('en', 'mr', 'hi')),
   created_at timestamptz not null default now()
 );
@@ -125,6 +126,8 @@ alter table players add column if not exists last_name text not null default 'x'
 alter table players alter column last_name drop default;
 alter table players add column if not exists name text
   generated always as (first_name || coalesce(' ' || nullif(last_name, 'x'), '')) stored;
+
+alter table players add column if not exists pin_reset_requested_at timestamptz;
 
 alter table memberships add column if not exists kind text not null default 'fixed';
 alter table memberships add column if not exists amount_rupees int;

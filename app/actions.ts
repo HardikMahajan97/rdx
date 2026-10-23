@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { sql, type Booking, type Lang, type Membership, type Player } from '@/lib/db';
 import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
-  currentPlayer, getLang, hashPin, isStaff, LANGS, lockStaff, normalizePhone, pinProblem,
-  requirePlayer, setLangCookie, signIn, signOut, unlockStaff, verifyPin,
+  claim, currentPlayer, hashPin, LANGS, lockStaff, normalizePhone, pinProblem,
+  requirePlayer, setLangCookie, signIn, signOut, verifyPin, viewer, isStaff,
 } from '@/lib/auth';
 import { clear, clientIp, hit } from '@/lib/ratelimit';
 import { activePlan, bookable, chargeBookings, covers, planBlocks, planLive, reservedSessions } from '@/lib/members';
@@ -25,6 +25,7 @@ export async function setLang(form: FormData) {
 }
 
 // ---------- Sign in ----------
+// phone (added by core/admin) → PIN (set it the first time or after a reset, enter it otherwise) → signed in.
 
 export async function join(form: FormData) {
   const limit = await hit(`join:${await clientIp()}`, 20, 600);
@@ -32,16 +33,11 @@ export async function join(form: FormData) {
 
   const phone = normalizePhone(str(form, 'phone'));
   if (!phone) return back('/', 'errPhone');
-  let [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
-  if (!player) {
-    const name = personName(form);
-    if (!name) return back('/', 'errName');
-    [player] = await sql<Player[]>`
-      insert into players (first_name, last_name, phone, lang)
-      values (${name.first}, ${name.last}, ${phone}, ${await getLang()}) returning *`;
-  }
-  await signIn(player.id);
-  redirect('/'); // staff land on the PIN screen
+  // No self sign-up: core/admin add people first (Members → Add a player).
+  const [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
+  if (!player) return back('/', 'notRegistered');
+  await claim(player.id);
+  redirect('/'); // the PIN screen
 }
 
 /** Players fix their own first and last name. */
@@ -63,10 +59,10 @@ export async function lock() {
   redirect('/');
 }
 
-/** First sign-in of a core member / admin: choose a PIN. */
+/** First sign-in, or the PIN was reset by core/admin: choose a new PIN. */
 export async function setPin(form: FormData) {
-  const me = await currentPlayer();
-  if (!me || !isStaff(me.role) || me.pin_hash) redirect('/');
+  const { player: me, gate } = await viewer();
+  if (!me || gate !== 'set') redirect('/');
   const limit = await hit(`pinset:${await clientIp()}`, 10, 900);
   if (!limit.ok) return back('/', 'tooMany', { min: limit.retryMin });
 
@@ -76,15 +72,16 @@ export async function setPin(form: FormData) {
   if (pin !== str(form, 'pin2')) return back('/', 'errPinMismatch');
 
   const [updated] = await sql<Player[]>`
-    update players set pin_hash = ${hashPin(pin)} where id = ${me.id} and pin_hash is null returning *`;
-  if (updated?.pin_hash) await unlockStaff({ ...updated, pin_hash: updated.pin_hash });
+    update players set pin_hash = ${hashPin(pin)}, pin_reset_requested_at = null
+    where id = ${me.id} and pin_hash is null returning *`;
+  if (updated?.pin_hash) await signIn({ ...updated, pin_hash: updated.pin_hash });
   redirect('/');
 }
 
-/** Staff unlock. Limited per account (5 wrong tries / 15 min) and per IP (30 / 15 min). */
+/** Sign in (everyone) or unlock (staff). Limited per account (5 wrong tries / 15 min) and per IP (30 / 15 min). */
 export async function enterPin(form: FormData) {
-  const me = await currentPlayer();
-  if (!me || !isStaff(me.role) || !me.pin_hash) redirect('/');
+  const { player: me, gate } = await viewer();
+  if (!me?.pin_hash || gate !== 'enter') redirect('/');
 
   const ipLimit = await hit(`pinip:${await clientIp()}`, 30, 900);
   const accLimit = await hit(`pin:${me.id}`, 5, 900);
@@ -95,8 +92,19 @@ export async function enterPin(form: FormData) {
     return back('/', 'errPinWrong', { left: accLimit.remaining });
   }
   await clear(`pin:${me.id}`);
-  await unlockStaff({ ...me, pin_hash: me.pin_hash });
+  await sql`update players set pin_reset_requested_at = null where id = ${me.id}`; // remembered it after all
+  await signIn({ ...me, pin_hash: me.pin_hash });
   redirect('/');
+}
+
+/** "Forgot PIN": asks core/admin to clear it. Once they do, the player sets a new one on this screen. */
+export async function forgotPin() {
+  const { player: me, gate } = await viewer();
+  if (!me?.pin_hash || gate !== 'enter') redirect('/');
+  const limit = await hit(`pinforgot:${await clientIp()}`, 5, 3600);
+  if (!limit.ok) return back('/', 'tooMany', { min: limit.retryMin });
+  await sql`update players set pin_reset_requested_at = now() where id = ${me.id} and pin_reset_requested_at is null`;
+  return back('/', 'pinResetRequested');
 }
 
 // ---------- Booking ----------

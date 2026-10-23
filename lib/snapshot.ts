@@ -1,6 +1,6 @@
 import { sql, type Batch, type Booking, type Membership, type Session } from './db';
 import { activePlans, planLive } from './members';
-import { isActive, seats } from './sessions';
+import { isActive, seatFee, seats } from './sessions';
 
 export type SnapshotRow = Booking & {
   name: string;
@@ -25,7 +25,7 @@ export async function snapshot(session: Session, batch: Batch) {
   const view: SnapshotRow[] = rows.map((r) => {
     const plan = plans.get(r.player_id);
     const covered = r.membership_id !== null;
-    const fee = ((covered ? 0 : 1) + r.guests) * batch.price_rupees;
+    const fee = ((covered ? 0 : 1) + r.guests) * seatFee(batch);
     // Withdrawn players who had already paid are owed their money back.
     const due = isActive(r) || (r.status === 'withdrawn' && r.paid) ? fee : 0;
     return { ...r, plan, covered, isMember: !!plan && planLive(plan, session.date), due };

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { sql, type Batch, type Player } from '@/lib/db';
 import { requireStaff } from '@/lib/auth';
 import { batchName, translator, type T } from '@/lib/i18n';
-import { getBatches } from '@/lib/sessions';
+import { getBatches, seatFee } from '@/lib/sessions';
 import { fmtTime, istDate, istInstant } from '@/lib/time';
 import { removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
 import { Msg, Skeleton, Toolbar } from '../ui/Shared';
@@ -61,6 +61,7 @@ async function AdminContent({ searchParams }: Props) {
                 <span className="row">
                   <span className={`pill ${s.role === 'admin' ? 'warn' : 'ok'}`}>{t(`role_${s.role}`)}</span>
                   {!s.pin_hash && <span className="pill bad">{t('pinNotSet')}</span>}
+                  {s.pin_reset_requested_at && <span className="pill warn">{t('pinRequests')}</span>}
                 </span>
               </div>
               {s.id !== me.id && (
@@ -73,6 +74,7 @@ async function AdminContent({ searchParams }: Props) {
                   {s.pin_hash && (
                     <form action={resetPin}>
                       <input type="hidden" name="id" value={s.id} />
+                      <input type="hidden" name="back" value="/admin" />
                       <button className="btn-sm btn-ghost">{t('resetPin')}</button>
                     </form>
                   )}
@@ -107,6 +109,7 @@ function BatchForm({ t, batch }: { t: T; batch: Batch }) {
         <label>{t('perCourt')}<input name="playersPerCourt" type="number" min="1" defaultValue={batch.players_per_court} /></label>
         <label>{t('price')}<input name="price" type="number" min="0" defaultValue={batch.price_rupees} /></label>
       </div>
+      {batch.duration_min !== 60 && <p className="muted">{t('perSession', { amount: seatFee(batch), min: batch.duration_min })}</p>}
       <button>{t('save')}</button>
     </form>
   );

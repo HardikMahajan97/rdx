@@ -529,3 +529,9 @@ th { color: var(--muted); font-weight: 600; }
   .smash .shuttle { transform: translate(53px, 22px) rotate(8deg); opacity: 1; }
   .smash .racquet { transform: rotate(-20deg); }
 }
+
+/* Staff status override on the roster */
+.status-edit { margin-top: 8px; }
+.status-edit summary { font-size: .9rem; color: var(--muted); font-weight: 500; cursor: pointer; }
+.status-edit .row { margin-top: 8px; }
+a.status { display: block; margin-bottom: 10px; text-decoration: none; }

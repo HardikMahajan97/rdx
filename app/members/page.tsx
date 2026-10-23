@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
-import { sql, type Membership, type PlanKind } from '@/lib/db';
-import { requireStaff } from '@/lib/auth';
+import { sql, type Membership, type Player, type PlanKind } from '@/lib/db';
+import { canResetPin, requireStaff } from '@/lib/auth';
 import { batchName, daysLabel, translator, type Key, type T } from '@/lib/i18n';
 import { ALL_DAYS, planLeft, planLive } from '@/lib/members';
 import { getBatches } from '@/lib/sessions';
 import { fmtDate, istDate } from '@/lib/time';
-import { endPlan, quoteRequest, rejectRequest } from '../staff-actions';
+import { addPlayer, dismissPinRequest, endPlan, quoteRequest, rejectRequest, resetPin, resetPinByPhone } from '../staff-actions';
 import { Submit } from '../ui/Client';
 import { PlanForm, type PlanDefaults } from '../ui/PlanForm';
 import { initials, Msg, Skeleton, Tile, Toolbar } from '../ui/Shared';
@@ -75,6 +75,10 @@ async function MembersContent({ searchParams }: Props) {
     <PlanForm batches={batchOpts} defaults={defaults} withPhone={opts.withPhone} topUp={opts.topUp} labels={labels(submit)} dayNames={dayNames} />
   );
   const live = members.filter((m) => planLive(m));
+  const pinRequests = (await sql<Pick<Player, 'id' | 'name' | 'phone' | 'role'>[]>`
+    select id, name, phone, role from players
+    where pin_reset_requested_at is not null and pin_hash is not null order by pin_reset_requested_at`)
+    .filter((p) => canResetPin(me, p));
 
   return (
     <>
@@ -91,6 +95,44 @@ async function MembersContent({ searchParams }: Props) {
       </div>
       <div className="cols">
         <div>
+          {pinRequests.length > 0 && (
+            <section className="card">
+              <h2>{t('pinRequests')}</h2>
+              <p className="muted">{t('pinRequestsHint')}</p>
+              <ul className="list">
+                {pinRequests.map((p) => (
+                  <li key={p.id} className="spread">
+                    <span className="person">
+                      <span className="av floater">{initials(p.name)}</span>
+                      <span className="pname">{p.name}<small><a href={`tel:${p.phone}`}>{p.phone}</a>{p.role !== 'player' && ` · ${t(`role_${p.role}`)}`}</small></span>
+                    </span>
+                    <span className="row">
+                      <form action={resetPin}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <Submit className="btn-sm btn-warn">{t('resetPin')}</Submit>
+                      </form>
+                      <form action={dismissPinRequest}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <Submit className="btn-sm btn-ghost">{t('dismiss')}</Submit>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <details className="card">
+            <summary>+ {t('addPlayer')}</summary>
+            <p className="muted">{t('addPlayerHint')}</p>
+            <form action={addPlayer} className="stack">
+              <label>{t('phone')}<input name="phone" type="tel" inputMode="numeric" placeholder="98xxxxxxxx" required /></label>
+              <div className="grid2">
+                <label>{t('firstName')}<input name="firstName" autoComplete="off" maxLength={40} required /></label>
+                <label>{t('lastName')}<input name="lastName" autoComplete="off" maxLength={40} required /></label>
+              </div>
+              <Submit className="btn-primary">{t('addPlayer')}</Submit>
+            </form>
+          </details>
           <h3>{t('requests')}</h3>
           {requests.length === 0 && <p className="muted">{t('noRequests')}</p>}
           {requests.map((r) => {
@@ -140,6 +182,14 @@ async function MembersContent({ searchParams }: Props) {
           <details className="card">
             <summary>+ {t('addMember')}</summary>
             {form({ kind: 'fixed', batchId: batches[0]?.id ?? '', days: REQUEST_DAYS.month, startsOn: istDate() }, 'activate', { withPhone: true })}
+          </details>
+          <details className="card">
+            <summary>{t('resetByPhone')}</summary>
+            <p className="muted">{t('pinRequestsHint')}</p>
+            <form action={resetPinByPhone} className="row">
+              <input name="phone" type="tel" inputMode="numeric" placeholder="98xxxxxxxx" required style={{ flex: 1, minWidth: 0 }} />
+              <Submit className="btn-sm btn-warn">{t('resetPin')}</Submit>
+            </form>
           </details>
         </div>
         <div>

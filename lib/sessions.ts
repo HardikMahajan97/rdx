@@ -1,4 +1,4 @@
-import { sql, type Batch, type Session, type Tx } from './db';
+import { sql, type Batch, type BookingStatus, type Session, type Tx } from './db';
 import { chargeBookings } from './members';
 import { istDate, istInstant } from './time';
 
@@ -53,6 +53,13 @@ export function timing(session: Session, batch: Batch, now = Date.now()) {
     /** Can say "I played" now. */
     canAttend: (phase === 'live' || phase === 'over') && !session.closed && now < closeAt.getTime(),
   };
+}
+
+/** Statuses staff may set on a booking: before the start it's about coming, after it about having played. */
+export function staffStatuses(phase: Phase): BookingStatus[] {
+  if (phase === 'open' || phase === 'locked') return ['booked', 'confirmed', 'withdrawn'];
+  if (phase === 'live' || phase === 'over') return ['present', 'no_show', 'withdrawn'];
+  return [];
 }
 
 /** The batch's next session that hasn't ended yet (today's or tomorrow's), created on first use. */
@@ -129,6 +136,8 @@ export async function awaitingAttendance(playerId: number) {
 }
 
 export const seats = (b: { guests: number }) => 1 + b.guests;
+/** Batches are priced per hour; one seat for one session costs this. */
+export const seatFee = (b: Pick<Batch, 'price_rupees' | 'duration_min'>) => Math.round((b.price_rupees * b.duration_min) / 60);
 export const ACTIVE = ['booked', 'confirmed', 'present'] as const;
 export const isActive = (b: { status: string }) => (ACTIVE as readonly string[]).includes(b.status);
 

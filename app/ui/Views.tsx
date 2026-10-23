@@ -2,7 +2,7 @@ import { sql, type Batch, type Booking, type Lang, type Membership, type Player,
 import { batchName, daysLabel, type T } from '@/lib/i18n';
 import { bookable, covers, planBlocks, planLeft, reservedSessions } from '@/lib/members';
 import { attendanceHistory, snapshot, type Snapshot, type SnapshotRow } from '@/lib/snapshot';
-import { awaitingAttendance, timing } from '@/lib/sessions';
+import { awaitingAttendance, seatFee, timing } from '@/lib/sessions';
 import { dayOfWeek, fmtDate, fmtTime, istDate } from '@/lib/time';
 import { confirmSlot, markAttended, withdraw } from '../actions';
 
@@ -100,8 +100,10 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
   const panels = await Promise.all(upcoming.map(async ({ batch, session }) => ({
     batch, session, snap: await snapshot(session, batch), history: await attendanceHistory(batch.id),
   })));
-  const [counts] = await sql<{ pending: number; quoted: number; active: number; low: number; wallets: number }[]>`
+  const [counts] = await sql<{ pending: number; quoted: number; active: number; low: number; wallets: number; pins: number }[]>`
     select
+      (select count(*) from players where pin_reset_requested_at is not null and pin_hash is not null
+         and id <> ${me.id} and (role = 'player' or ${me.role} = 'admin'))::int as pins,
       (select count(*) from membership_requests where status = 'pending')::int as pending,
       (select count(*) from membership_requests where status = 'quoted')::int as quoted,
       (select count(*) from memberships where status = 'active' and sessions_used < sessions_total
@@ -167,6 +169,7 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
       <div className="cols">
         <section className="card">
           <h2>{t('requests')}</h2>
+          {counts.pins > 0 && <a className="status warn" href="/members">{t('pinRequestsCount', { n: counts.pins })} →</a>}
           {requests.length === 0 ? <p className="muted">{t('noRequests')}</p> : (
             <ul className="list">
               {requests.map((r) => (
@@ -290,7 +293,7 @@ function SlotAction({ t, lang, batch, session, snap, mine, plan, reserved }: {
   const active = mine && (mine.status === 'booked' || mine.status === 'confirmed' || mine.status === 'present');
   if (active) {
     const covered = mine.membership_id !== null;
-    const due = ((covered ? 0 : 1) + mine.guests) * batch.price_rupees;
+    const due = ((covered ? 0 : 1) + mine.guests) * seatFee(batch);
     const withdrawLabel = covered ? t('memberCantCome') : mine.paid ? t('paidCantCome') : t('cantMakeIt');
     return (
       <div className="action">
@@ -349,7 +352,7 @@ function SlotAction({ t, lang, batch, session, snap, mine, plan, reserved }: {
     <div className="action">
       {mine?.status === 'withdrawn' && <p className="muted">{t('notComingMarked')}</p>}
       {tm.phase === 'locked' && <p className="hint">🔒 {t('lateJoinHint')}</p>}
-      <BookForm sessionId={session.id} price={batch.price_rupees} selfCovered={selfCovered} maxFriends={Math.min(10, left - 1)}
+      <BookForm sessionId={session.id} price={seatFee(batch)} selfCovered={selfCovered} maxFriends={Math.min(10, left - 1)}
         labels={{ justMe: t('justMe'), meAndFriends: t('meAndFriends'), friends: t('friends'), you: t('you'), total: t('total'),
           covered: plan?.kind === 'wallet' ? t('fromWallet') : t('covered'), bookSlot: t('bookSlot') }} />
     </div>

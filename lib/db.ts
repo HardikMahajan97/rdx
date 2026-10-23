@@ -28,6 +28,7 @@ export type Player = {
   phone: string;
   role: Role;
   pin_hash: string | null;
+  pin_reset_requested_at: Date | null;
   lang: Lang;
 };
 

@@ -65,7 +65,7 @@ export async function chargeBookings(tx: Tx, bookingIds: number[]) {
   const rows = await tx<{ id: number; membership_id: number }[]>`
     update bookings set charged = true, updated_at = now()
     where id = any(${bookingIds}::int[]) and membership_id is not null and not charged
-      and status in ('booked', 'confirmed', 'present')
+      and status in ('booked', 'confirmed', 'present', 'no_show')
     returning id, membership_id`;
   for (const r of rows) {
     await tx`update memberships set sessions_used = sessions_used + 1 where id = ${r.membership_id}`;
@@ -73,7 +73,7 @@ export async function chargeBookings(tx: Tx, bookingIds: number[]) {
   }
 }
 
-/** Gives charged plan sessions back (session cancelled). */
+/** Gives charged plan sessions back (session cancelled, or staff excused the player). */
 export async function refundBookings(tx: Tx, bookingIds: number[], by?: number) {
   if (bookingIds.length === 0) return;
   const rows = await tx<{ id: number; membership_id: number }[]>`
@@ -106,4 +106,14 @@ export async function recheckBookings(tx: Tx, playerId: number) {
     if (use && r.locked) toCharge.push(r.id);
   }
   await chargeBookings(tx, toCharge);
+}
+
+/** Works out again whether the player's plan pays for one booking (staff brought it back after a back-out). */
+export async function assignPlan(tx: Tx, bookingId: number) {
+  const [r] = await tx<{ player_id: number; batch_id: string; date: string }[]>`
+    select b.player_id, s.batch_id, s.date from bookings b join sessions s on s.id = b.session_id where b.id = ${bookingId}`;
+  const [plan] = await tx<Membership[]>`
+    select * from memberships where player_id = ${r.player_id} and status = 'active' for update`;
+  const use = covers(plan, r) && bookable(plan, await reservedSessions(tx, plan.id, bookingId)) >= 1;
+  await tx`update bookings set membership_id = ${use ? plan.id : null} where id = ${bookingId}`;
 }

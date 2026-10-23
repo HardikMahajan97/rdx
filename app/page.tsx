@@ -4,7 +4,7 @@ import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
 import { upcomingSessions } from '@/lib/sessions';
-import { cancelRequest, enterPin, join, leave, setPin, updateName } from './actions';
+import { cancelRequest, enterPin, forgotPin, join, leave, setPin, updateName } from './actions';
 import { ApplyForm } from './ui/ApplyForm';
 import { Submit } from './ui/Client';
 import { Loader, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
@@ -47,11 +47,6 @@ async function HomeContent({ searchParams }: Props) {
             {t('phone')}
             <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
           </label>
-          <div className="eyebrow">{t('nameHint')}</div>
-          <div className="grid2">
-            <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
-            <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
-          </div>
           <Submit className="btn-big">{t('continue')}</Submit>
         </form>
       </div>
@@ -59,11 +54,15 @@ async function HomeContent({ searchParams }: Props) {
   }
 
   if (gate) {
+    const staff = isStaff(me.role);
+    const hint = gate === 'set'
+      ? staff ? t('pinSetHint', { role: t(`role_${me.role}`) }) : t('pinSetHintPlayer')
+      : staff ? t('pinEnterHint') : t('pinEnterHintPlayer', { name: me.first_name });
     return (
       <div style={narrow}>
         {top}
         <h1>{gate === 'set' ? t('pinSetTitle') : t('pinEnterTitle')}</h1>
-        <p className="muted">{gate === 'set' ? t('pinSetHint', { role: t(`role_${me.role}`) }) : t('pinEnterHint')}</p>
+        <p className="muted">{hint}</p>
         <form action={gate === 'set' ? setPin : enterPin} className="card stack">
           <label>
             {t('pin')}
@@ -75,8 +74,11 @@ async function HomeContent({ searchParams }: Props) {
               <input name="pin2" type="password" inputMode="numeric" pattern="\d{4}" maxLength={4} autoComplete="off" required className="pin" />
             </label>
           )}
-          <Submit className="btn-big">{gate === 'set' ? t('pinSave') : t('unlock')}</Submit>
+          <Submit className="btn-big">{gate === 'set' ? t('pinSave') : staff ? t('unlock') : t('continue')}</Submit>
         </form>
+        {gate === 'enter' && (me.pin_reset_requested_at
+          ? <div className="status warn">{t('pinRequestPending')}</div>
+          : <form action={forgotPin}><Submit className="btn-ghost btn-sm">{t('forgotPin')}</Submit></form>)}
         <form action={leave}><button className="btn-ghost btn-sm">{t('switchUser', { name: me.first_name })}</button></form>
       </div>
     );
