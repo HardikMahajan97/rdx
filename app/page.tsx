@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { sql, type Membership, type PlanKind } from '@/lib/db';
+import { GENDERS, SKILL_LEVELS, sql, type Membership, type PlanKind } from '@/lib/db';
 import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
@@ -47,11 +47,31 @@ async function HomeContent({ searchParams }: Props) {
             {t('phone')}
             <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
           </label>
-          <div className="eyebrow">{t('nameHint')}</div>
-          <div className="grid2">
-            <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
-            <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
-          </div>
+          {/* Only new numbers need these; a known number goes straight to the PIN. */}
+          <details className="signup" open={msg === 'needName' || msg === 'errEmail' || msg === 'errSkill' || msg === 'errGender' || msg === 'errName'}>
+            <summary>{t('nameHint')}</summary>
+            <div className="stack">
+              <div className="grid2">
+                <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
+                <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
+              </div>
+              <label>{t('email')}<input name="email" type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="name@example.com" /></label>
+              <div className="grid2">
+                <label>{t('skillLevel')}
+                  <select name="skill" defaultValue="">
+                    <option value="" disabled>{t('choose')}</option>
+                    {SKILL_LEVELS.map((s) => <option key={s} value={s}>{t(`skill_${s}`)}</option>)}
+                  </select>
+                </label>
+                <label>{t('gender')}
+                  <select name="gender" defaultValue="">
+                    <option value="" disabled>{t('choose')}</option>
+                    {GENDERS.map((g) => <option key={g} value={g}>{t(`gender_${g}`)}</option>)}
+                  </select>
+                </label>
+              </div>
+            </div>
+          </details>
           <Submit className="btn-big">{t('continue')}</Submit>
         </form>
       </div>

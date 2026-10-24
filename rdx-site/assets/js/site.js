@@ -418,8 +418,29 @@ function dock() {
   }
 }
 
+/** Highlights the header link of the section you're reading, and keeps it in view in the phone's link row. */
+function navSpy() {
+  const nav = $('#nav');
+  const links = [...nav.querySelectorAll('a')];
+  const sections = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const seen = new Map();
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => seen.set(e.target, e.isIntersecting));
+    const current = sections.find((s) => seen.get(s));
+    links.forEach((a) => {
+      const on = !!current && a.getAttribute('href') === `#${current.id}`;
+      if (on && a.getAttribute('aria-current') !== 'true' && nav.scrollWidth > nav.clientWidth) {
+        nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: still ? 'auto' : 'smooth' });
+      }
+      on ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current');
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach((s) => io.observe(s));
+}
+
 renderBasics();
 renderAbout();
+navSpy();
 wireFilters();
 buildShots();
 flowchart();

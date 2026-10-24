@@ -19,6 +19,11 @@ export type Tx = postgres.TransactionSql;
 export type Role = 'player' | 'core' | 'admin';
 export type Lang = 'en' | 'mr' | 'hi';
 
+export const SKILL_LEVELS = ['basic', 'intermediate', 'advanced'] as const;
+export type SkillLevel = (typeof SKILL_LEVELS)[number];
+export const GENDERS = ['male', 'female', 'other'] as const;
+export type Gender = (typeof GENDERS)[number];
+
 export type Player = {
   id: number;
   first_name: string;
@@ -32,6 +37,9 @@ export type Player = {
   deactivated_at: Date | null;
   /** Self sign-ups are null until core/admin approve them. */
   approved_at: Date | null;
+  email: string | null;
+  skill_level: SkillLevel | null;
+  gender: Gender | null;
   created_at: Date;
   lang: Lang;
 };

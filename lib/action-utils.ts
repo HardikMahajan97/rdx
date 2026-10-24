@@ -12,6 +12,11 @@ export function personName(f: FormData) {
   const last = str(f, 'lastName').slice(0, 40);
   return first && last ? { first, last } : null;
 }
+/** Lower-cased email, or null if it doesn't look like one. */
+export function email(f: FormData) {
+  const e = str(f, 'email').toLowerCase().slice(0, 120);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : null;
+}
 /** Only allow redirecting back to our own pages. */
 export const safePath = (p: string) => (p.startsWith('/') && !p.startsWith('//') ? p : '/');
 

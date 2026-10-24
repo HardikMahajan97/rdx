@@ -75,8 +75,8 @@ async function MembersContent({ searchParams }: Props) {
     <PlanForm batches={batchOpts} defaults={defaults} withPhone={opts.withPhone} topUp={opts.topUp} labels={labels(submit)} dayNames={dayNames} />
   );
   const live = members.filter((m) => planLive(m));
-  const signups = await sql<{ id: number; name: string; phone: string; created_at: Date }[]>`
-    select id, name, phone, created_at from players
+  const signups = await sql<Pick<Player, 'id' | 'name' | 'phone' | 'created_at' | 'email' | 'skill_level' | 'gender'>[]>`
+    select id, name, phone, created_at, email, skill_level, gender from players
     where approved_at is null and deactivated_at is null order by created_at`;
   const pinRequests = (await sql<Pick<Player, 'id' | 'name' | 'phone' | 'role'>[]>`
     select id, name, phone, role from players
@@ -114,6 +114,11 @@ async function MembersContent({ searchParams }: Props) {
                         <input type="hidden" name="id" value={p.id} />
                         <Submit className="btn-sm btn-ok">{t('approve')}</Submit>
                       </form>
+                    </div>
+                    <div className="row" style={{ marginTop: 6 }}>
+                      {p.skill_level && <span className="pill blue">{t(`skill_${p.skill_level}`)}</span>}
+                      {p.gender && <span className="pill">{t(`gender_${p.gender}`)}</span>}
+                      {p.email && <a className="muted" href={`mailto:${p.email}`}>{p.email}</a>}
                     </div>
                     <details className="status-edit">
                       <summary>{t('reject')}</summary>

@@ -211,7 +211,7 @@ For developers who prefer doing it by hand: `cp .env.example .env.local`, set a 
 
 | Role | How they get it | Sign-in | Can |
 |---|---|---|---|
-| Floater | Signs up with phone + name; core/admin approve the request (Members → New sign-ups). Staff can also add them directly (Members → Add a player). | Phone + own 4-digit PIN, once per device | Votes for any slot ("Just me" / "Me + friends") and pays the per-session fee. Sees counts only. |
+| Floater | Signs up with phone, name, email, skill level (basic / intermediate / advanced) and gender; core/admin approve the request (Members → New sign-ups). Staff can also add them directly (Members → Add a player). | Phone + own 4-digit PIN, once per device | Votes for any slot ("Just me" / "Me + friends") and pays the per-session fee. Sees counts only. |
 | Member | Applies in the app; core/admin quotes the amount, collects it offline and activates the plan | Same as floater | Votes like everyone else, using plan sessions. Sees who's coming. |
 | Core member | Admin enters their phone number | Phone + own 4-digit PIN | Roster (dues, refunds, ±court, share), quote and activate plans, wallet top-ups |
 | Admin (RDX) | Admin enters their phone number (first one comes from `.env`) | Phone + own 4-digit PIN | Everything above, plus staff management, batch settings and cancelling sessions |

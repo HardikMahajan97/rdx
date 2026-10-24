@@ -14,7 +14,7 @@ const check = (cond, good, missing) => (cond ? ok(good) : bad(missing));
 
 const REQUIRED = {
   batches: ['id', 'label', 'start_time', 'duration_min', 'courts', 'players_per_court', 'price_rupees'],
-  players: ['id', 'first_name', 'last_name', 'name', 'phone', 'role', 'pin_hash', 'pin_reset_requested_at', 'deactivated_at', 'approved_at', 'lang'],
+  players: ['id', 'first_name', 'last_name', 'name', 'phone', 'role', 'pin_hash', 'pin_reset_requested_at', 'deactivated_at', 'approved_at', 'email', 'skill_level', 'gender', 'lang'],
   memberships: ['id', 'player_id', 'kind', 'batch_id', 'days', 'sessions_total', 'sessions_used', 'starts_on', 'ends_on', 'amount_rupees', 'status'],
   plan_ledger: ['id', 'membership_id', 'delta', 'reason', 'booking_id', 'amount_rupees', 'by_player'],
   membership_requests: ['id', 'player_id', 'batch_id', 'plan', 'sessions_requested', 'amount_rupees', 'status'],

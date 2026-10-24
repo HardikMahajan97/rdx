@@ -23,6 +23,9 @@ create table if not exists players (
   deactivated_at timestamptz,                    -- set by an admin: can't sign in until reactivated
   approved_at timestamptz,                       -- self sign-ups wait for core/admin; null = not approved yet
   approved_by int,
+  email      text,                               -- asked at self sign-up
+  skill_level text check (skill_level in ('basic', 'intermediate', 'advanced')),
+  gender     text check (gender in ('male', 'female', 'other')),
   lang       text not null default 'en' check (lang in ('en', 'mr', 'hi')),
   created_at timestamptz not null default now()
 );
@@ -141,6 +144,13 @@ do $$ begin
   end if;
 end $$;
 alter table players add column if not exists approved_by int;
+alter table players add column if not exists email text;
+alter table players add column if not exists skill_level text;
+alter table players add column if not exists gender text;
+alter table players drop constraint if exists players_skill_level_check;
+alter table players add constraint players_skill_level_check check (skill_level in ('basic', 'intermediate', 'advanced'));
+alter table players drop constraint if exists players_gender_check;
+alter table players add constraint players_gender_check check (gender in ('male', 'female', 'other'));
 
 alter table memberships add column if not exists kind text not null default 'fixed';
 alter table memberships add column if not exists amount_rupees int;

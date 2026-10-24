@@ -535,3 +535,8 @@ th { color: var(--muted); font-weight: 600; }
 .status-edit summary { font-size: .9rem; color: var(--muted); font-weight: 500; cursor: pointer; }
 .status-edit .row { margin-top: 8px; }
 a.status { display: block; margin-bottom: 10px; text-decoration: none; }
+
+/* Sign-in: the "New here? Ask to join" part opens with one tap */
+details.signup { border-top: 1px solid var(--line); padding-top: 12px; }
+details.signup > summary { font-weight: 600; color: var(--text); min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+details.signup > .stack { margin-top: 8px; }

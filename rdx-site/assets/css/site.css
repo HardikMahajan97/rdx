@@ -19,12 +19,13 @@
   --r-lg: 20px;
   --gutter: 16px;
   --max: 1120px;
-  --head: 60px;
+  --head: 108px; /* header height: logo row + links row on phones */
   --display: 'Anek Devanagari', system-ui, sans-serif;
   --body: 'Mukta', system-ui, sans-serif;
   color-scheme: dark;
 }
 @media (min-width: 600px) { :root { --gutter: 28px; } }
+@media (min-width: 720px) { :root { --head: 60px; } }
 @media (min-width: 1000px) { :root { --gutter: 48px; } }
 
 * { box-sizing: border-box; }
@@ -71,18 +72,33 @@ p { margin: 0; }
 .mark { font: 800 1.5rem/1 var(--display); font-stretch: 125%; letter-spacing: -.03em; }
 .mark i { font-style: normal; color: var(--red); font-weight: 700; }
 .top {
-  position: sticky; top: 0; z-index: 30; height: calc(var(--head) + env(safe-area-inset-top));
-  display: flex; align-items: center; gap: 14px;
+  position: sticky; top: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px;
   padding: env(safe-area-inset-top) var(--gutter) 0;
-  background: rgba(5, 5, 6, .82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(5, 5, 6, .86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; margin-right: auto; min-height: 44px; }
+.brand { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; margin-right: auto; min-height: 56px; }
 .brand-icon { width: 26px; height: 26px; transform: rotate(-30deg); }
-.top nav { display: none; gap: 24px; }
-.top nav a { text-decoration: none; color: var(--muted); font-weight: 500; padding: 10px 0; }
-.top nav a:hover { color: var(--text); }
-@media (min-width: 720px) { .top nav { display: flex; } }
+/* Phones: the section links get their own row under the logo, swipeable if they don't fit */
+.top nav {
+  order: 3; flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 6px; overscroll-behavior-x: contain; position: relative;
+}
+.top nav::-webkit-scrollbar { display: none; }
+@media (max-width: 719px) { .top nav { -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); } }
+.top nav a {
+  flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px;
+  text-decoration: none; color: var(--muted); font-weight: 500; font-size: .98rem; border: 1px solid transparent;
+  transition: color .2s ease, background-color .2s ease, border-color .2s ease;
+}
+.top nav a[aria-current="true"] { color: var(--text); background: var(--graphite); border-color: var(--line-strong); }
+@media (hover: hover) { .top nav a:hover { color: var(--text); } }
+@media (min-width: 720px) {
+  .top { flex-wrap: nowrap; height: calc(var(--head) + env(safe-area-inset-top)); }
+  .brand { min-height: 44px; }
+  .top nav { order: 0; flex: none; margin: 0; padding: 0; gap: 4px; overflow: visible; }
+}
 
 /* ---------- Hero ---------- */
 

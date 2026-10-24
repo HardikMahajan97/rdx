@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { sql, type Booking, type Lang, type Membership, type Player } from '@/lib/db';
-import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
+import { GENDERS, SKILL_LEVELS, sql, type Booking, type Gender, type Lang, type Membership, type Player, type SkillLevel } from '@/lib/db';
+import { back, email, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
   claim, currentPlayer, getLang, hashPin, LANGS, lockStaff, normalizePhone, pinProblem,
   requirePlayer, setLangCookie, signIn, signOut, verifyPin, viewer, isStaff,
@@ -39,9 +39,15 @@ export async function join(form: FormData) {
     // Self sign-up: a join request that core/admin approve on the Members page.
     const name = personName(form);
     if (!name) return back('/', 'needName');
+    const mail = email(form);
+    if (!mail) return back('/', 'errEmail');
+    const skill = SKILL_LEVELS.find((s) => s === str(form, 'skill')) as SkillLevel | undefined;
+    if (!skill) return back('/', 'errSkill');
+    const gender = GENDERS.find((g) => g === str(form, 'gender')) as Gender | undefined;
+    if (!gender) return back('/', 'errGender');
     await sql`
-      insert into players (first_name, last_name, phone, lang)
-      values (${name.first}, ${name.last}, ${phone}, ${await getLang()})
+      insert into players (first_name, last_name, phone, email, skill_level, gender, lang)
+      values (${name.first}, ${name.last}, ${phone}, ${mail}, ${skill}, ${gender}, ${await getLang()})
       on conflict (phone) do nothing`;
     return back('/', 'signupSent', { name: name.first });
   }
