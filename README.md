@@ -216,7 +216,7 @@ For developers who prefer doing it by hand: `cp .env.example .env.local`, set a 
 | Core member | Admin enters their phone number | Phone + own 4-digit PIN | Roster (dues, refunds, ±court, share), quote and activate plans, wallet top-ups |
 | Admin (RDX) | Admin enters their phone number (first one comes from `.env`) | Phone + own 4-digit PIN | Everything above, plus staff management, batch settings and cancelling sessions |
 
-Everyone sets a PIN the first time they sign in. Players and members then stay signed in on that phone; core and admin enter their PIN again after 20 minutes idle or when the browser closes. Forgot your PIN? Tap "Forgot PIN" on the PIN screen: core members (for players) or admins (for anyone) clear it on the Members page, which signs that person out everywhere, and they set a new one at next sign-in. Wrong PINs are limited to 5 tries per account and 30 per IP every 15 minutes. PINs are stored as salted scrypt hashes.
+Everyone sets a PIN the first time they sign in. Players and members then stay signed in on that phone; core and admin enter their PIN again after 20 minutes idle or when the browser closes. Forgot your PIN? Tap "Forgot PIN" on the PIN screen: core members (for players) or admins (for anyone) clear it on the Members page, which signs that person out everywhere, and they set a new one at next sign-in. Admins see **inactive users** on the Admin page: people who were added but haven't set a PIN yet (never signed in, or their PIN was reset) and players an admin deactivated. Deactivating a player signs them out at once, blocks sign-in, withdraws their votes for sessions that haven't started (giving back any plan session already taken) and closes open plan requests; their plan is kept, and **Reactivate** lets them sign in again with the same PIN. Wrong PINs are limited to 5 tries per account and 30 per IP every 15 minutes. PINs are stored as salted scrypt hashes.
 
 ### A slot, start to finish
 
@@ -248,3 +248,4 @@ Players mark their own attendance. On the roster staff see each player's status 
 | `lib/` | Sign-in and PINs (`auth.ts`), slot timing (`sessions.ts`), plans (`members.ts`), translations (`i18n.ts`) |
 | `db/schema.sql` | Database tables; safe to rerun |
 | `scripts/` | Setup, database checks and the Neon → local copy |
+| `rdx-site/` | The public RDx promo website (separate Vercel project; see `rdx-site/README.md`) |

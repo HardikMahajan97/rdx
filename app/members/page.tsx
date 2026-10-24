@@ -77,7 +77,7 @@ async function MembersContent({ searchParams }: Props) {
   const live = members.filter((m) => planLive(m));
   const pinRequests = (await sql<Pick<Player, 'id' | 'name' | 'phone' | 'role'>[]>`
     select id, name, phone, role from players
-    where pin_reset_requested_at is not null and pin_hash is not null order by pin_reset_requested_at`)
+    where pin_reset_requested_at is not null and pin_hash is not null and deactivated_at is null order by pin_reset_requested_at`)
     .filter((p) => canResetPin(me, p));
 
   return (

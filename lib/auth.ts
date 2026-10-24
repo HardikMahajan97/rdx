@@ -77,8 +77,9 @@ const pidValue = (id: number, pinHash: string) => {
   return `${id}.${pv}.${hmac(`pid:${id}:${pv}`)}`;
 };
 
+/** Deactivated accounts don't count as signed in anywhere, so deactivating signs them out at once. */
 async function playerById(id: number) {
-  const [player] = await sql<Player[]>`select * from players where id = ${id}`;
+  const [player] = await sql<Player[]>`select * from players where id = ${id} and deactivated_at is null`;
   return player ?? null;
 }
 

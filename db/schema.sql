@@ -20,6 +20,7 @@ create table if not exists players (
   role       text not null default 'player' check (role in ('player', 'core', 'admin')),
   pin_hash   text,                               -- scrypt; everyone sets it at first sign-in, and again after a reset
   pin_reset_requested_at timestamptz,            -- "Forgot PIN": waiting for core/admin to reset it
+  deactivated_at timestamptz,                    -- set by an admin: can't sign in until reactivated
   lang       text not null default 'en' check (lang in ('en', 'mr', 'hi')),
   created_at timestamptz not null default now()
 );
@@ -128,6 +129,7 @@ alter table players add column if not exists name text
   generated always as (first_name || coalesce(' ' || nullif(last_name, 'x'), '')) stored;
 
 alter table players add column if not exists pin_reset_requested_at timestamptz;
+alter table players add column if not exists deactivated_at timestamptz;
 
 alter table memberships add column if not exists kind text not null default 'fixed';
 alter table memberships add column if not exists amount_rupees int;

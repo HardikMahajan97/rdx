@@ -287,6 +287,41 @@ export async function dismissPinRequest(form: FormData) {
   back('/members', 'pinRequestDismissed');
 }
 
+/**
+ * Admin switches a player off: they're signed out everywhere and can't sign in. Their votes for sessions that
+ * haven't started are withdrawn (giving back any plan session already taken) and open plan requests are closed.
+ * Their plan itself is kept, so reactivating puts them back where they were.
+ */
+export async function deactivatePlayer(form: FormData) {
+  const admin = await requireStaff('staff');
+  const id = int(form, 'id');
+  const name = await sql.begin(async (tx) => {
+    const [p] = await tx<Player[]>`
+      update players set deactivated_at = now(), pin_reset_requested_at = null
+      where id = ${id} and id <> ${admin.id} and role = 'player' and deactivated_at is null returning *`;
+    if (!p) return null;
+    const upcoming = await tx<{ id: number }[]>`
+      select b.id from bookings b join sessions s on s.id = b.session_id
+      where b.player_id = ${id} and b.status in ('booked', 'confirmed') and s.starts_at > now() and not s.cancelled`;
+    await refundBookings(tx, upcoming.map((b) => b.id), admin.id);
+    await tx`
+      update bookings set status = 'withdrawn', confirmed_at = null, checked_by = ${admin.id}, updated_at = now()
+      where id = any(${upcoming.map((b) => b.id)}::int[])`;
+    await tx`
+      update membership_requests set status = 'rejected', handled_by = ${admin.id}, handled_at = now()
+      where player_id = ${id} and status in ('pending', 'quoted')`;
+    return p.name;
+  });
+  back('/admin', name ? 'playerDeactivated' : 'errCantDeactivate', { name: name ?? '' });
+}
+
+export async function reactivatePlayer(form: FormData) {
+  await requireStaff('staff');
+  const [p] = await sql<Player[]>`
+    update players set deactivated_at = null where id = ${int(form, 'id')} and deactivated_at is not null returning *`;
+  back('/admin', 'playerReactivated', { name: p?.name ?? '' });
+}
+
 export async function removeStaff(form: FormData) {
   const admin = await requireStaff('staff');
   const id = int(form, 'id');

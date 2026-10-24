@@ -1,11 +1,12 @@
 import { Suspense } from 'react';
 import { sql, type Batch, type Player } from '@/lib/db';
 import { requireStaff } from '@/lib/auth';
-import { batchName, translator, type T } from '@/lib/i18n';
+import { batchName, translator, type Key, type T } from '@/lib/i18n';
 import { getBatches, seatFee } from '@/lib/sessions';
-import { fmtTime, istDate, istInstant } from '@/lib/time';
-import { removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
-import { Msg, Skeleton, Toolbar } from '../ui/Shared';
+import { fmtDate, fmtTime, istDate, istInstant } from '@/lib/time';
+import { deactivatePlayer, reactivatePlayer, removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
+import { Submit } from '../ui/Client';
+import { initials, Msg, Skeleton, Toolbar } from '../ui/Shared';
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
 
@@ -23,6 +24,28 @@ async function AdminContent({ searchParams }: Props) {
   const { msg, mv } = await searchParams;
   const batches = await getBatches();
   const staff = await sql<Player[]>`select * from players where role <> 'player' order by role, name`;
+  // Inactive = added but no PIN yet (never signed in, or PIN was reset), or switched off by an admin.
+  const people = await sql<Player[]>`select * from players where id <> ${me.id} order by name`;
+  const noPin = people.filter((p) => !p.deactivated_at && !p.pin_hash);
+  const deactivated = people.filter((p) => p.deactivated_at);
+  const active = people.filter((p) => !p.deactivated_at && p.pin_hash && p.role === 'player');
+  const day = (d: Date) => fmtDate(istDate(0, d.getTime()), me.lang);
+  const person = (p: Player, sub: React.ReactNode) => (
+    <span className="person">
+      <span className={`av ${p.deactivated_at ? '' : 'floater'}`}>{initials(p.name)}</span>
+      <span className="pname">{p.name}<small><a href={`tel:${p.phone}`}>{p.phone}</a> · {sub}</small></span>
+    </span>
+  );
+  const deactivate = (p: Player) => p.role === 'player' && (
+    <details className="status-edit">
+      <summary>{t('deactivate')}</summary>
+      <p className="muted">{t('deactivateHint')}</p>
+      <form action={deactivatePlayer}>
+        <input type="hidden" name="id" value={p.id} />
+        <Submit className="btn-sm btn-danger">{t('deactivateConfirm', { name: p.first_name })}</Submit>
+      </form>
+    </details>
+  );
 
   return (
     <>
@@ -94,6 +117,50 @@ async function AdminContent({ searchParams }: Props) {
       <h3>{t('batches')}</h3>
       {batches.map((b) => <BatchForm key={b.id} t={t} batch={b} />)}
       </div>
+      </div>
+
+      <h3>{t('players')}</h3>
+      <div className="cols">
+        <section className="card">
+          <h2>{t('inactiveUsers')} <span className="muted">({noPin.length + deactivated.length})</span></h2>
+          <p className="muted">{t('inactiveHint')}</p>
+          {noPin.length + deactivated.length === 0 && <p className="muted">{t('noInactive')}</p>}
+          {noPin.length > 0 && <div className="eyebrow">{t('noPinYet')}</div>}
+          <ul className="list">
+            {noPin.map((p) => (
+              <li key={p.id}>
+                <div className="spread" style={{ flexWrap: 'nowrap' }}>
+                  {person(p, t('addedOn', { date: day(p.created_at) }))}
+                  <span className="pill warn">{p.role === 'player' ? t('pinNotSet') : t(`role_${p.role}` as Key)}</span>
+                </div>
+                {deactivate(p)}
+              </li>
+            ))}
+          </ul>
+          {deactivated.length > 0 && <div className="eyebrow">{t('deactivatedList')}</div>}
+          <ul className="list">
+            {deactivated.map((p) => (
+              <li key={p.id} className="spread" style={{ flexWrap: 'nowrap' }}>
+                {person(p, t('deactivatedOn', { date: day(p.deactivated_at!) }))}
+                <form action={reactivatePlayer}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <Submit className="btn-sm btn-ok">{t('reactivate')}</Submit>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <details className="card">
+          <summary>{t('activePlayers')} <span className="muted">({active.length})</span></summary>
+          <ul className="list">
+            {active.map((p) => (
+              <li key={p.id}>
+                {person(p, t('addedOn', { date: day(p.created_at) }))}
+                {deactivate(p)}
+              </li>
+            ))}
+          </ul>
+        </details>
       </div>
     </>
   );

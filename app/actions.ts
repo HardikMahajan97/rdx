@@ -36,6 +36,7 @@ export async function join(form: FormData) {
   // No self sign-up: core/admin add people first (Members → Add a player).
   const [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
   if (!player) return back('/', 'notRegistered');
+  if (player.deactivated_at) return back('/', 'accountDeactivated');
   await claim(player.id);
   redirect('/'); // the PIN screen
 }
