@@ -100,8 +100,9 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
   const panels = await Promise.all(upcoming.map(async ({ batch, session }) => ({
     batch, session, snap: await snapshot(session, batch), history: await attendanceHistory(batch.id),
   })));
-  const [counts] = await sql<{ pending: number; quoted: number; active: number; low: number; wallets: number; pins: number }[]>`
+  const [counts] = await sql<{ pending: number; quoted: number; active: number; low: number; wallets: number; pins: number; signups: number }[]>`
     select
+      (select count(*) from players where approved_at is null and deactivated_at is null)::int as signups,
       (select count(*) from players where pin_reset_requested_at is not null and pin_hash is not null
          and id <> ${me.id} and (role = 'player' or ${me.role} = 'admin'))::int as pins,
       (select count(*) from membership_requests where status = 'pending')::int as pending,
@@ -169,6 +170,7 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
       <div className="cols">
         <section className="card">
           <h2>{t('requests')}</h2>
+          {counts.signups > 0 && <a className="status warn" href="/members">{t('signupsCount', { n: counts.signups })} →</a>}
           {counts.pins > 0 && <a className="status warn" href="/members">{t('pinRequestsCount', { n: counts.pins })} →</a>}
           {requests.length === 0 ? <p className="muted">{t('noRequests')}</p> : (
             <ul className="list">

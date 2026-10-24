@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>RDx Badminton Community</title>
-  <meta name="description" content="RDx is a badminton community with morning and evening sessions. See announcements and tournaments, and contact us to join.">
+  <meta name="description" content="RDx is a badminton community of 300+ players at Aliens Badminton Academy, with morning and evening batches. See announcements and tournaments, and contact us to join.">
   <meta name="theme-color" content="#050506">
   <meta property="og:title" content="RDx Badminton Community">
   <meta property="og:description" content="Badminton every morning and evening. Announcements, tournaments and how to join.">
@@ -45,6 +45,8 @@
     <symbol id="i-vote" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" fill="none" stroke="currentColor" stroke-width="2" /></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0113 0c0 5-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="10" r="2.4" fill="currentColor" /></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M19 12a7 7 0 01-12 4.9M5 12a7 7 0 0112-4.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M17 3v4.3h-4.3M7 21v-4.3h4.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4m0 1h11l-2.5 4L17 13H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /></symbol>
   </svg>
 
@@ -53,6 +55,7 @@
   <header class="top">
     <a class="brand" href="#" aria-label="RDx home"><svg class="brand-icon" aria-hidden="true"><use href="#i-shuttle" /></svg><span class="mark">RD<i>x</i></span></a>
     <nav aria-label="Sections">
+      <a href="#about">About</a>
       <a href="#news">News</a>
       <a href="#shots">Play</a>
       <a href="#team">Team</a>
@@ -101,6 +104,28 @@
         </div>
         <ul class="slots" id="slots" aria-label="Daily sessions"></ul>
       </div>
+    </section>
+
+    <!-- About: who we are, where, and which courts each batch plays on -->
+    <section class="section about" id="about" aria-labelledby="about-title">
+      <div class="about-head">
+        <p class="big-stat"><b id="stat-members">300+</b><span>members</span></p>
+        <div>
+          <h2 id="about-title">About RDx</h2>
+          <p class="venue-line"><svg aria-hidden="true"><use href="#i-pin" /></svg><span id="about-venue"></span></p>
+        </div>
+      </div>
+      <p class="about-text">RDx is a badminton community of <span id="stat-members-2">300+</span> players. We play every morning and evening on our own courts, members and drop-in players together, and rotate so everyone gets games.</p>
+
+      <div class="batches" id="batches"></div>
+
+      <h3 class="sub">How a session goes</h3>
+      <ol class="mini-chain">
+        <li><svg aria-hidden="true"><use href="#i-vote" /></svg><span>Vote for your batch in the app</span></li>
+        <li><svg aria-hidden="true"><use href="#i-pin" /></svg><span>Come to the academy</span></li>
+        <li><svg aria-hidden="true"><use href="#i-racquet" /></svg><span>Play on your batch's courts</span></li>
+        <li><svg aria-hidden="true"><use href="#i-rotate" /></svg><span>Rotate so everyone gets games</span></li>
+      </ol>
     </section>
 
     <!-- Upcoming tournaments (from announcements; hidden when there are none) -->

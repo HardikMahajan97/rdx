@@ -30,6 +30,8 @@ export type Player = {
   pin_hash: string | null;
   pin_reset_requested_at: Date | null;
   deactivated_at: Date | null;
+  /** Self sign-ups are null until core/admin approve them. */
+  approved_at: Date | null;
   created_at: Date;
   lang: Lang;
 };

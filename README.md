@@ -84,7 +84,7 @@ You can run the script again at any time. It skips everything that's already don
 1. Open **http://localhost:3000** in your browser.
 2. Enter the admin phone number you gave the setup script.
 3. Choose a 4-digit PIN. Admins enter it each time they open the app.
-4. To add players, go to **Members → Add a player**: phone number and name. They then sign in with that number and choose their own PIN.
+4. New players sign up themselves with their number and name; approve them under **Members → New sign-ups**. You can also add someone directly under **Members → Add a player**. Either way, they then sign in with that number and choose their own PIN.
 
 To test as a player on the same computer, use a private/incognito window: each window can be signed in as a different person.
 
@@ -194,7 +194,7 @@ For developers who prefer doing it by hand: `cp .env.example .env.local`, set a 
 | Problem | Fix |
 |---|---|
 | `command not found: npm` or `node` right after setup | Close the terminal, open a new one, `cd badminton-community`, and run the command again. |
-| "This number is not registered yet" when signing in | Only added people can sign in. An admin or core member adds them under **Members → Add a player**. For the first admin, check `ADMIN_PHONE` in `.env.local`, then rerun `bash scripts/setup-local.sh`. |
+| "Waiting for approval" when signing in | New sign-ups need a core member or admin to approve them under **Members → New sign-ups** (the dashboard shows how many are waiting). For the first admin, check `ADMIN_PHONE` in `.env.local`, then rerun `bash scripts/setup-local.sh`. |
 | Forgot a PIN | Tap **Forgot PIN?** on the PIN screen; another admin or core member resets it under **Members**. If the only admin forgot theirs locally: `psql "$(grep ^DATABASE_URL .env.local \| cut -d= -f2-)" -c "update players set pin_hash = null where phone = '<number>'"`, then sign in and choose a new PIN. |
 | "Port 3000 is in use" | The app is already running in another terminal window. Use that one, or stop it with `Ctrl` + `C` first. |
 | "PostgreSQL did not start" / "Can't connect" | Run `bash scripts/setup-local.sh` again; it starts the database and can repair the login. On Windows, open the Ubuntu window first (WSL stops PostgreSQL when it shuts down). |
@@ -211,7 +211,7 @@ For developers who prefer doing it by hand: `cp .env.example .env.local`, set a 
 
 | Role | How they get it | Sign-in | Can |
 |---|---|---|---|
-| Floater | Core/admin add their number + name (Members → Add a player) | Phone + own 4-digit PIN, once per device | Votes for any slot ("Just me" / "Me + friends") and pays the per-session fee. Sees counts only. |
+| Floater | Signs up with phone + name; core/admin approve the request (Members → New sign-ups). Staff can also add them directly (Members → Add a player). | Phone + own 4-digit PIN, once per device | Votes for any slot ("Just me" / "Me + friends") and pays the per-session fee. Sees counts only. |
 | Member | Applies in the app; core/admin quotes the amount, collects it offline and activates the plan | Same as floater | Votes like everyone else, using plan sessions. Sees who's coming. |
 | Core member | Admin enters their phone number | Phone + own 4-digit PIN | Roster (dues, refunds, ±court, share), quote and activate plans, wallet top-ups |
 | Admin (RDX) | Admin enters their phone number (first one comes from `.env`) | Phone + own 4-digit PIN | Everything above, plus staff management, batch settings and cancelling sessions |

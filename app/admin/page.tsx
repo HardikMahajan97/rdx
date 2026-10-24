@@ -26,7 +26,8 @@ async function AdminContent({ searchParams }: Props) {
   const staff = await sql<Player[]>`select * from players where role <> 'player' order by role, name`;
   // Inactive = added but no PIN yet (never signed in, or PIN was reset), or switched off by an admin.
   const people = await sql<Player[]>`select * from players where id <> ${me.id} order by name`;
-  const noPin = people.filter((p) => !p.deactivated_at && !p.pin_hash);
+  const noPin = people.filter((p) => !p.deactivated_at && !p.pin_hash && p.approved_at);
+  const waiting = people.filter((p) => !p.deactivated_at && !p.approved_at);
   const deactivated = people.filter((p) => p.deactivated_at);
   const active = people.filter((p) => !p.deactivated_at && p.pin_hash && p.role === 'player');
   const day = (d: Date) => fmtDate(istDate(0, d.getTime()), me.lang);
@@ -122,9 +123,10 @@ async function AdminContent({ searchParams }: Props) {
       <h3>{t('players')}</h3>
       <div className="cols">
         <section className="card">
-          <h2>{t('inactiveUsers')} <span className="muted">({noPin.length + deactivated.length})</span></h2>
+          <h2>{t('inactiveUsers')} <span className="muted">({noPin.length + deactivated.length + waiting.length})</span></h2>
           <p className="muted">{t('inactiveHint')}</p>
-          {noPin.length + deactivated.length === 0 && <p className="muted">{t('noInactive')}</p>}
+          {noPin.length + deactivated.length + waiting.length === 0 && <p className="muted">{t('noInactive')}</p>}
+          {waiting.length > 0 && <a className="status warn" href="/members">{t('signupsCount', { n: waiting.length })} →</a>}
           {noPin.length > 0 && <div className="eyebrow">{t('noPinYet')}</div>}
           <ul className="list">
             {noPin.map((p) => (

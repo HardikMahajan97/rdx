@@ -1,4 +1,4 @@
-import { KIND_LABELS, SESSIONS, SITE, TEAM } from './config.js';
+import { COMMUNITY, KIND_LABELS, SESSIONS, SITE, TEAM } from './config.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const PAGE = 9;
@@ -21,6 +21,35 @@ const wa = (phone, text) => `https://wa.me/91${phone}?text=${encodeURIComponent(
 const initials = (name) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 // ---------- Static parts from config ----------
+
+/** About: a row of mini courts per batch, with that batch's courts lit. */
+function renderAbout() {
+  $('#stat-members').textContent = COMMUNITY.members;
+  $('#stat-members-2').textContent = COMMUNITY.members;
+  const venue = $('#about-venue');
+  venue.append(SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue);
+  if (!SITE.venue) venue.parentElement.hidden = true;
+  const courts = Array.from({ length: COMMUNITY.totalCourts }, (_, i) => i + 1);
+  $('#batches').append(...SESSIONS.map((b) => {
+    const label = b.courts.length === 1 ? `Court ${b.courts[0]}` : `Courts ${b.courts.slice(0, -1).join(', ')} and ${b.courts.at(-1)}`;
+    let n = 0;
+    return h('article', { class: 'batch' },
+      h('div', { class: 'batch-head' },
+        h('b', {}, b.name),
+        h('span', { class: 'batch-time' }, `${b.start} to ${b.end}`)),
+      h('ol', { class: 'courts', 'aria-label': label },
+        courts.map((c) => {
+          const on = b.courts.includes(c);
+          const li = h('li', { class: on ? 'on' : '', 'aria-hidden': 'true' }, h('span', {}, String(c)));
+          if (on) li.style.setProperty('--i', String(n++));
+          return li;
+        })),
+      h('p', { class: 'batch-courts' }, label));
+  }));
+  const box = $('#batches');
+  if (still) box.classList.add('lit');
+  else new IntersectionObserver(([e], io) => { if (e.isIntersecting) { box.classList.add('lit'); io.disconnect(); } }, { threshold: 0.4 }).observe(box);
+}
 
 function renderBasics() {
   $('#slots').append(...SESSIONS.map((s) =>
@@ -390,6 +419,7 @@ function dock() {
 }
 
 renderBasics();
+renderAbout();
 wireFilters();
 buildShots();
 flowchart();

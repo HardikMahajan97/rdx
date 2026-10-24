@@ -5,7 +5,7 @@ import { batchName, daysLabel, translator, type Key, type T } from '@/lib/i18n';
 import { ALL_DAYS, planLeft, planLive } from '@/lib/members';
 import { getBatches } from '@/lib/sessions';
 import { fmtDate, istDate } from '@/lib/time';
-import { addPlayer, dismissPinRequest, endPlan, quoteRequest, rejectRequest, resetPin, resetPinByPhone } from '../staff-actions';
+import { addPlayer, approveSignup, dismissPinRequest, rejectSignup, endPlan, quoteRequest, rejectRequest, resetPin, resetPinByPhone } from '../staff-actions';
 import { Submit } from '../ui/Client';
 import { PlanForm, type PlanDefaults } from '../ui/PlanForm';
 import { initials, Msg, Skeleton, Tile, Toolbar } from '../ui/Shared';
@@ -75,6 +75,9 @@ async function MembersContent({ searchParams }: Props) {
     <PlanForm batches={batchOpts} defaults={defaults} withPhone={opts.withPhone} topUp={opts.topUp} labels={labels(submit)} dayNames={dayNames} />
   );
   const live = members.filter((m) => planLive(m));
+  const signups = await sql<{ id: number; name: string; phone: string; created_at: Date }[]>`
+    select id, name, phone, created_at from players
+    where approved_at is null and deactivated_at is null order by created_at`;
   const pinRequests = (await sql<Pick<Player, 'id' | 'name' | 'phone' | 'role'>[]>`
     select id, name, phone, role from players
     where pin_reset_requested_at is not null and pin_hash is not null and deactivated_at is null order by pin_reset_requested_at`)
@@ -95,6 +98,35 @@ async function MembersContent({ searchParams }: Props) {
       </div>
       <div className="cols">
         <div>
+          {signups.length > 0 && (
+            <section className="card signups">
+              <h2>{t('signups')} <span className="pill warn">{signups.length}</span></h2>
+              <p className="muted">{t('signupsHint')}</p>
+              <ul className="list">
+                {signups.map((p) => (
+                  <li key={p.id}>
+                    <div className="spread" style={{ flexWrap: 'nowrap' }}>
+                      <span className="person">
+                        <span className="av floater">{initials(p.name)}</span>
+                        <span className="pname">{p.name}<small><a href={`tel:${p.phone}`}>{p.phone}</a> · {fmtDate(istDate(0, p.created_at.getTime()), me.lang)}</small></span>
+                      </span>
+                      <form action={approveSignup}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <Submit className="btn-sm btn-ok">{t('approve')}</Submit>
+                      </form>
+                    </div>
+                    <details className="status-edit">
+                      <summary>{t('reject')}</summary>
+                      <form action={rejectSignup}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <Submit className="btn-sm btn-danger">{t('rejectSignupConfirm', { name: p.name })}</Submit>
+                      </form>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {pinRequests.length > 0 && (
             <section className="card">
               <h2>{t('pinRequests')}</h2>

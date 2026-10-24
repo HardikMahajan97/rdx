@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { sql, type Booking, type Lang, type Membership, type Player } from '@/lib/db';
 import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
-  claim, currentPlayer, hashPin, LANGS, lockStaff, normalizePhone, pinProblem,
+  claim, currentPlayer, getLang, hashPin, LANGS, lockStaff, normalizePhone, pinProblem,
   requirePlayer, setLangCookie, signIn, signOut, verifyPin, viewer, isStaff,
 } from '@/lib/auth';
 import { clear, clientIp, hit } from '@/lib/ratelimit';
@@ -25,7 +25,8 @@ export async function setLang(form: FormData) {
 }
 
 // ---------- Sign in ----------
-// phone (added by core/admin) → PIN (set it the first time or after a reset, enter it otherwise) → signed in.
+// New number + name → join request → core/admin approve → phone → set PIN → signed in.
+// Known number → PIN (enter it, or set it the first time / after a reset).
 
 export async function join(form: FormData) {
   const limit = await hit(`join:${await clientIp()}`, 20, 600);
@@ -33,10 +34,19 @@ export async function join(form: FormData) {
 
   const phone = normalizePhone(str(form, 'phone'));
   if (!phone) return back('/', 'errPhone');
-  // No self sign-up: core/admin add people first (Members → Add a player).
   const [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
-  if (!player) return back('/', 'notRegistered');
+  if (!player) {
+    // Self sign-up: a join request that core/admin approve on the Members page.
+    const name = personName(form);
+    if (!name) return back('/', 'needName');
+    await sql`
+      insert into players (first_name, last_name, phone, lang)
+      values (${name.first}, ${name.last}, ${phone}, ${await getLang()})
+      on conflict (phone) do nothing`;
+    return back('/', 'signupSent', { name: name.first });
+  }
   if (player.deactivated_at) return back('/', 'accountDeactivated');
+  if (!player.approved_at) return back('/', 'signupPending');
   await claim(player.id);
   redirect('/'); // the PIN screen
 }

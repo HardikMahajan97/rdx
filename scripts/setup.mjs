@@ -19,8 +19,8 @@ for (const [role, phone, name] of [
   // ADMIN_NAME / CORE_NAME: first word is the first name, the rest the last name ('x' if none).
   const [first, ...rest] = name.trim().split(/\s+/);
   await sql`
-    insert into players (first_name, last_name, phone, role) values (${first}, ${rest.join(' ') || 'x'}, ${phone}, ${role})
-    on conflict (phone) do update set role = excluded.role`;
+    insert into players (first_name, last_name, phone, role, approved_at) values (${first}, ${rest.join(' ') || 'x'}, ${phone}, ${role}, now())
+    on conflict (phone) do update set role = excluded.role, approved_at = coalesce(players.approved_at, now())`;
   console.log(`${role}: ${phone} (sets PIN on first sign-in)`);
 }
 console.log('Database ready');

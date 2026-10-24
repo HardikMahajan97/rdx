@@ -5,6 +5,7 @@ The public site for the RDx badminton community: what RDx is, session times, ann
 Built phone first. The page, top to bottom:
 
 1. **Hero**: the RDx wordmark on a court (drawn upright on phones). One shuttle flies across when the page opens.
+1. **About RDx**: the member count, the venue, a court map per batch with that batch's courts lit up, and a short "how a session goes" chain.
 2. **Coming up**: upcoming tournaments with date bubbles (only when there are some).
 3. **Announcements**, with filters.
 4. **Four shots you'll play**: swipeable cards, each a tiny looping rally (clear, smash, drop, net shot). They only animate while on screen.
@@ -36,7 +37,8 @@ dev.mjs               local preview server
 Open `assets/js/config.js`:
 
 - `TEAM`: names, roles and phone numbers (10 digits). The first person is shown as the community head.
-- `SESSIONS`: batch names and times.
+- `COMMUNITY`: the member count ("300+") and how many courts the venue has.
+- `SESSIONS`: batch names, times and the court numbers each batch plays on.
 - `SITE.appUrl`: the booking app's link once it's online. While it's empty, the "Open the app" button stays hidden.
 - `SITE.venue` / `SITE.mapUrl`: where you play (a Google Maps link works). Hidden while empty.
 

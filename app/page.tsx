@@ -47,6 +47,11 @@ async function HomeContent({ searchParams }: Props) {
             {t('phone')}
             <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
           </label>
+          <div className="eyebrow">{t('nameHint')}</div>
+          <div className="grid2">
+            <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
+            <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
+          </div>
           <Submit className="btn-big">{t('continue')}</Submit>
         </form>
       </div>

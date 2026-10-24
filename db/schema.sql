@@ -21,6 +21,8 @@ create table if not exists players (
   pin_hash   text,                               -- scrypt; everyone sets it at first sign-in, and again after a reset
   pin_reset_requested_at timestamptz,            -- "Forgot PIN": waiting for core/admin to reset it
   deactivated_at timestamptz,                    -- set by an admin: can't sign in until reactivated
+  approved_at timestamptz,                       -- self sign-ups wait for core/admin; null = not approved yet
+  approved_by int,
   lang       text not null default 'en' check (lang in ('en', 'mr', 'hi')),
   created_at timestamptz not null default now()
 );
@@ -130,6 +132,15 @@ alter table players add column if not exists name text
 
 alter table players add column if not exists pin_reset_requested_at timestamptz;
 alter table players add column if not exists deactivated_at timestamptz;
+-- Sign-ups need approval now. Everyone who already had an account counts as approved.
+do $$ begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'players' and column_name = 'approved_at') then
+    alter table players add column approved_at timestamptz;
+    update players set approved_at = created_at;
+  end if;
+end $$;
+alter table players add column if not exists approved_by int;
 
 alter table memberships add column if not exists kind text not null default 'fixed';
 alter table memberships add column if not exists amount_rupees int;

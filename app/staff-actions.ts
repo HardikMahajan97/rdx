@@ -92,21 +92,48 @@ export async function cancelSession(form: FormData) {
 
 // ---------- Players ----------
 
-/** Core/admin register a floater. They sign in with this number and set their own PIN, like staff do. */
+/** Core/admin register a floater directly (already approved). They sign in with this number and set their own PIN. */
 export async function addPlayer(form: FormData) {
-  await requireStaff('members');
+  const staff = await requireStaff('members');
   const phone = normalizePhone(str(form, 'phone'));
   const name = personName(form);
   if (!phone) back('/members', 'errPhone');
   if (!name) back('/members', 'errName');
   const [added] = await sql<Player[]>`
-    insert into players (first_name, last_name, phone) values (${name.first}, ${name.last}, ${phone})
+    insert into players (first_name, last_name, phone, approved_at, approved_by)
+    values (${name.first}, ${name.last}, ${phone}, now(), ${staff.id})
     on conflict (phone) do nothing returning *`;
   if (!added) {
     const [p] = await sql<Player[]>`select * from players where phone = ${phone}`;
+    // Someone already asked to join with this number: adding them is the same as approving.
+    if (p && !p.approved_at) {
+      await sql`update players set approved_at = now(), approved_by = ${staff.id} where id = ${p.id}`;
+      back('/members', 'playerApproved', { name: p.name });
+    }
     back('/members', 'errPlayerExists', { name: p?.name ?? phone });
   }
   back('/members', 'playerAdded', { name: added.name });
+}
+
+/** Approve a self sign-up. They can now sign in with their number and set a PIN. */
+export async function approveSignup(form: FormData) {
+  const staff = await requireStaff('members');
+  const [p] = await sql<Player[]>`
+    update players set approved_at = now(), approved_by = ${staff.id}
+    where id = ${int(form, 'id')} and approved_at is null returning *`;
+  back('/members', 'playerApproved', { name: p?.name ?? '' });
+}
+
+/** Turn a sign-up down. The request is removed; the number can ask again later. */
+export async function rejectSignup(form: FormData) {
+  await requireStaff('members');
+  const [p] = await sql<Player[]>`
+    delete from players p where p.id = ${int(form, 'id')} and p.approved_at is null and p.pin_hash is null
+      and not exists (select 1 from bookings b where b.player_id = p.id)
+      and not exists (select 1 from memberships m where m.player_id = p.id)
+      and not exists (select 1 from membership_requests r where r.player_id = p.id)
+    returning *`;
+  back('/members', 'signupRejected', { name: p?.name ?? '' });
 }
 
 // ---------- Memberships ----------
@@ -174,12 +201,16 @@ export async function savePlan(form: FormData) {
     } else {
       const phone = normalizePhone(str(form, 'phone'));
       if (!phone) return ['errPhone'];
-      [player] = await tx<Player[]>`select * from players where phone = ${phone}`;
+      // Giving someone a plan also approves them if they were still waiting.
+      [player] = await tx<Player[]>`
+        update players set approved_at = coalesce(approved_at, now()), approved_by = coalesce(approved_by, ${staff.id})
+        where phone = ${phone} returning *`;
       if (!player) {
         const name = personName(form);
         if (!name) return ['errName'];
         [player] = await tx<Player[]>`
-          insert into players (first_name, last_name, phone) values (${name.first}, ${name.last}, ${phone}) returning *`;
+          insert into players (first_name, last_name, phone, approved_at, approved_by)
+          values (${name.first}, ${name.last}, ${phone}, now(), ${staff.id}) returning *`;
       }
     }
     if (!player) return ['noRequests'];
@@ -247,9 +278,12 @@ export async function saveStaff(form: FormData) {
   const [p] = await sql<Player[]>`select * from players where phone = ${phone!}`;
   if (!p && !name) back('/admin', 'errName');
   const [saved] = p
-    ? await sql<Player[]>`update players set role = ${role} where id = ${p.id} returning *`
+    ? await sql<Player[]>`
+        update players set role = ${role}, approved_at = coalesce(approved_at, now()), approved_by = coalesce(approved_by, ${admin.id})
+        where id = ${p.id} returning *`
     : await sql<Player[]>`
-        insert into players (first_name, last_name, phone, role) values (${name!.first}, ${name!.last}, ${phone!}, ${role}) returning *`;
+        insert into players (first_name, last_name, phone, role, approved_at, approved_by)
+        values (${name!.first}, ${name!.last}, ${phone!}, ${role}, now(), ${admin.id}) returning *`;
   back('/admin', 'staffSaved', { name: saved.name, role });
 }
 
