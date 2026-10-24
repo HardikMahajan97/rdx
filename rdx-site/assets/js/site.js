@@ -24,7 +24,7 @@ const initials = (name) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('
 
 function renderBasics() {
   $('#slots').append(...SESSIONS.map((s) =>
-    h('li', {}, h('b', {}, s.start), h('span', {}, `${s.name} · till ${s.end}`))));
+    h('li', {}, h('b', {}, s.start), h('span', {}, s.name, h('span', { class: 'till' }, ` · till ${s.end}`)))));
 
   $('#team-list').append(...TEAM.map((p, i) =>
     h('li', { class: i === 0 ? 'lead' : '' },
@@ -37,6 +37,7 @@ function renderBasics() {
         h('a', { class: 'btn btn-sm btn-wa', href: wa(p.phone, SITE.joinMessage), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
         h('a', { class: 'btn btn-sm btn-ghost', href: `tel:+91${p.phone}` }, 'Call')))));
 
+  $('#chain-times').textContent = SESSIONS.map((x) => x.start).join(' or ');
   $('#join-whatsapp').href = wa(TEAM[0].phone, SITE.joinMessage);
   $('#join-whatsapp').target = '_blank';
   if (SITE.appUrl) Object.assign($('#open-app'), { href: SITE.appUrl, hidden: false });
@@ -189,14 +190,210 @@ function wireFilters() {
   d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
 }
 
+// ---------- Motion ----------
+// Everything below is SVG/CSS transforms only, runs only while its section is on screen,
+// and is skipped entirely for people who turn on "reduce motion".
+
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (still) document.documentElement.classList.add('still');
+const SVG = 'http://www.w3.org/2000/svg';
+const s = (tag, attrs = {}) => { const el = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); return el; };
+
+/** Calls back with true/false as an element enters/leaves the screen. */
+function onScreen(el, cb, margin = '80px') {
+  new IntersectionObserver((entries) => entries.forEach((e) => cb(e.isIntersecting)), { rootMargin: margin }).observe(el);
+}
+
+/** Hero: one rally across the court that's visible (upright on phones, sideways on wide screens). */
 function rally() {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return document.documentElement.classList.add('still');
-  const a = document.getElementById('rally');
-  a?.parentElement?.removeAttribute('transform');
-  setTimeout(() => a?.beginElement?.(), 350);
+  if (still) return;
+  const svg = [...document.querySelectorAll('.hero .court')].find((x) => getComputedStyle(x).display !== 'none');
+  const a = svg?.querySelector('.rally');
+  if (!a) return;
+  setTimeout(() => { a.parentElement.classList.remove('hide'); a.beginElement(); }, 350);
+}
+
+// Side view: player on the left, net at x = 150, floor at y = 150.
+const SHOTS = [
+  { name: 'Clear', tag: 'high, to the back line', d: 'M38 96 Q150 -70 276 146', dur: 2.4 },
+  { name: 'Smash', tag: 'steep and fast', d: 'M44 34 Q120 52 214 146', dur: 1.5 },
+  { name: 'Drop', tag: 'soft, just over the net', d: 'M38 70 Q138 28 182 146', dur: 2.2 },
+  { name: 'Net shot', tag: 'a tight tumble', d: 'M124 120 Q150 88 170 146', dur: 1.7 },
+];
+
+function buildShots() {
+  const row = $('#shot-row');
+  for (const shot of SHOTS) {
+    const svg = s('svg', { viewBox: '0 0 300 170', class: 'shot-svg', 'aria-hidden': 'true' });
+    svg.append(
+      s('line', { x1: 8, y1: 150, x2: 292, y2: 150, class: 'floor' }),
+      s('line', { x1: 150, y1: 150, x2: 150, y2: 104, class: 'net-post' }),
+      s('path', { d: 'M150 104 L150 128', class: 'net-mesh' }),
+      s('path', { d: shot.d, class: 'shot-path', pathLength: 100 }),
+      s('circle', { cx: 0, cy: 150, r: 6, class: 'land' }),
+    );
+    const nums = shot.d.slice(1).split(/[\sQ,]+/).map(Number);
+    const [x0, y0] = nums;
+    const racquet = s('use', { href: '#i-racquet', x: x0 - 30, y: y0 - 12, width: 34, height: 34, class: 'shot-racquet' });
+    racquet.style.setProperty('--dur', `${shot.dur}s`);
+    racquet.style.transformOrigin = `${x0 - 22}px ${y0 + 16}px`;
+    const g = s('g');
+    const motion = s('animateMotion', { dur: `${shot.dur}s`, repeatCount: 'indefinite', rotate: 'auto', path: shot.d,
+      calcMode: 'spline', keyPoints: '0;1', keyTimes: '0;1', keySplines: shot.name === 'Smash' ? '.5 0 .9 .6' : '.3 .2 .6 1' });
+    const shuttle = s('use', { href: '#i-shuttle', x: -11, y: -11, width: 22, height: 22, transform: 'rotate(-90)' });
+    g.append(motion, shuttle);
+    svg.append(racquet, g);
+    const land = svg.querySelector('.land');
+    land.setAttribute('cx', nums.at(-2));
+    land.style.setProperty('--dur', `${shot.dur}s`);
+    const fig = h('figure', { class: 'shot' }, svg, h('figcaption', {}, h('b', {}, shot.name), h('span', {}, shot.tag)));
+    row.append(fig);
+    if (still) { svg.pauseAnimations(); continue; }
+    onScreen(fig, (on) => { fig.classList.toggle('run', on); on ? svg.unpauseAnimations() : svg.pauseAnimations(); }, '0px');
+  }
+}
+
+/** Decision flowchart: opens up step by step the first time it's seen. */
+function flowchart() {
+  const flow = $('#flow');
+  if (still) return flow.classList.add('go');
+  const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { flow.classList.add('go'); io.disconnect(); } }, { threshold: 0.35 });
+  io.observe(flow);
+}
+
+// ---------- Scroll-driven pieces: the chain line and the court guide ----------
+
+const progress = (el, at = 0.62) => {
+  const r = el.getBoundingClientRect();
+  return Math.min(1, Math.max(0, (innerHeight * at - r.top) / r.height));
+};
+
+function chain() {
+  const list = $('#chain');
+  const items = [...list.children];
+  return () => {
+    const p = still ? 1 : progress(list);
+    list.style.setProperty('--fill', p.toFixed(3));
+    const top = list.getBoundingClientRect().top;
+    const reach = top + p * list.offsetHeight;
+    items.forEach((li) => li.classList.toggle('on', li.getBoundingClientRect().top + 22 <= reach + 1));
+  };
+}
+
+/** The court guide: lines, the path through the four stations, and the shuttle that follows your scroll. */
+function guide() {
+  const box = $('#guide');
+  const svg = $('.guide-svg', box);
+  const path = $('.g-path', svg);
+  const done = $('.g-done', svg);
+  const shuttle = $('.g-shuttle', svg);
+  const stations = [...box.querySelectorAll('.st')];
+  const netTag = $('.net-tag', box);
+  let len = 0;
+  let marks = [];
+
+  function layout() {
+    const W = box.clientWidth;
+    const H = box.clientHeight;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const at = (el) => {
+      const b = el.getBoundingClientRect();
+      const o = box.getBoundingClientRect();
+      return [b.left - o.left + b.width / 2, b.top - o.top + b.height / 2];
+    };
+    const pts = stations.map((st) => at($('.st-n', st)));
+    // Court: outer lines, doubles sidelines, the net halfway between steps 2 and 3, service lines either side.
+    const netY = (pts[1][1] + pts[2][1]) / 2;
+    const inset = 6;
+    const side = Math.min(26, W * 0.06);
+    const svc = Math.min(H * 0.1, 120);
+    const g = $('.g-lines', svg);
+    g.replaceChildren(
+      s('rect', { x: inset, y: inset, width: W - inset * 2, height: H - inset * 2, rx: 4 }),
+      s('line', { x1: inset + side, y1: inset, x2: inset + side, y2: H - inset }),
+      s('line', { x1: W - inset - side, y1: inset, x2: W - inset - side, y2: H - inset }),
+      s('line', { x1: inset, y1: netY - svc, x2: W - inset, y2: netY - svc }),
+      s('line', { x1: inset, y1: netY + svc, x2: W - inset, y2: netY + svc }),
+      s('line', { x1: W / 2, y1: inset, x2: W / 2, y2: netY - svc }),
+      s('line', { x1: W / 2, y1: netY + svc, x2: W / 2, y2: H - inset }),
+      s('line', { x1: inset - 4, y1: netY, x2: W - inset + 4, y2: netY, class: 'g-net' }),
+    );
+    netTag.style.top = `${netY}px`;
+    // Path: from the top baseline, through each station number, to the far baseline.
+    const all = [[W / 2, inset + 4], ...pts, [W / 2, H - inset - 4]];
+    let d = `M${all[0][0]} ${all[0][1]}`;
+    for (let i = 1; i < all.length; i++) {
+      const [x1, y1] = all[i - 1];
+      const [x2, y2] = all[i];
+      const my = (y2 - y1) / 2;
+      d += ` C${x1} ${y1 + my} ${x2} ${y2 - my} ${x2} ${y2}`;
+    }
+    path.setAttribute('d', d);
+    done.setAttribute('d', d);
+    len = path.getTotalLength();
+    done.style.strokeDasharray = `${len} ${len}`;
+    // Where along the path each station sits (for lighting it up as the shuttle arrives).
+    marks = pts.map(([, y]) => {
+      let lo = 0, hi = len;
+      for (let k = 0; k < 24; k++) { const mid = (lo + hi) / 2; if (path.getPointAtLength(mid).y < y) lo = mid; else hi = mid; }
+      return lo / len;
+    });
+  }
+
+  function update() {
+    if (!len) return;
+    const p = still ? 1 : progress(box, 0.55);
+    const at = p * len;
+    const pt = path.getPointAtLength(at);
+    const ahead = path.getPointAtLength(Math.min(len, at + 2));
+    const behind = path.getPointAtLength(Math.max(0, at - 2));
+    const angle = (Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * 180) / Math.PI - 90;
+    shuttle.setAttribute('transform', `translate(${pt.x} ${pt.y}) rotate(${angle})`);
+    done.style.strokeDashoffset = String(len - at);
+    stations.forEach((st, i) => st.classList.toggle('on', p >= marks[i] - 0.005));
+    box.classList.toggle('finished', p >= 0.999);
+  }
+
+  layout();
+  new ResizeObserver(() => { layout(); update(); }).observe(box);
+  return update;
+}
+
+function scrollEngine(parts) {
+  const active = new Set();
+  let queued = false;
+  const tick = () => { queued = false; active.forEach((f) => f()); };
+  const queue = () => { if (!queued && active.size) { queued = true; requestAnimationFrame(tick); } };
+  for (const [el, fn] of parts) {
+    onScreen(el, (on) => { on ? active.add(fn) : active.delete(fn); fn(); }, '200px');
+    fn();
+  }
+  addEventListener('scroll', queue, { passive: true });
+  addEventListener('resize', queue, { passive: true });
+}
+
+/** Phones: a WhatsApp bar slides up once the hero is gone, and hides again near the join buttons and team. */
+function dock() {
+  const bar = $('#dock');
+  $('#dock-wa').href = wa(TEAM[0].phone, SITE.joinMessage);
+  $('#dock-wa').target = '_blank';
+  const seen = new Map();
+  const set = () => {
+    const show = !seen.get('hero') && !seen.get('cta') && !seen.get('team') && !seen.get('foot');
+    bar.classList.toggle('show', show);
+    bar.setAttribute('aria-hidden', String(!show));
+    bar.querySelectorAll('a').forEach((a) => a.tabIndex = show ? 0 : -1);
+  };
+  for (const [k, el] of [['hero', $('.hero')], ['cta', $('#guide-cta')], ['team', $('#team')], ['foot', $('.foot')]]) {
+    new IntersectionObserver(([e]) => { seen.set(k, e.isIntersecting); set(); }).observe(el);
+  }
 }
 
 renderBasics();
 wireFilters();
+buildShots();
+flowchart();
+scrollEngine([[$('#chain'), chain()], [$('#guide'), guide()]]);
+dock();
 rally();
 loadPosts();

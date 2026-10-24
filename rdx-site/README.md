@@ -2,6 +2,21 @@
 
 The public site for the RDx badminton community: what RDx is, session times, announcements (news, tournaments, videos, photos), the team's contact numbers and how to join.
 
+Built phone first. The page, top to bottom:
+
+1. **Hero**: the RDx wordmark on a court (drawn upright on phones). One shuttle flies across when the page opens.
+2. **Coming up**: upcoming tournaments with date bubbles (only when there are some).
+3. **Announcements**, with filters.
+4. **Four shots you'll play**: swipeable cards, each a tiny looping rally (clear, smash, drop, net shot). They only animate while on screen.
+5. **A slot, start to finish**: a chain whose line fills as you scroll.
+6. **Who pays what**: a decision flowchart that opens up step by step.
+7. **Your way onto the court**: the joining steps placed on a court, with a shuttle that follows the path as you scroll and lights up each step.
+8. **Team** with WhatsApp and call buttons. On phones, a WhatsApp/Call bar slides up from the bottom once the hero is gone.
+
+All animation is SVG and CSS transforms, and it all stops when the phone's "reduce motion" setting is on.
+
+Tested at 320, 360, 390 and 430 px wide, in phone landscape (667×375, 844×390), and on a tablet and a laptop. Every size has no sideways scrolling, tap targets of at least 44 px and text of at least 0.8rem. Scrolling stays at 60 fps with the CPU slowed 4×.
+
 Plain HTML, CSS and JavaScript with no build step, plus two small Vercel functions for posting. It's separate from the booking app in the parent folder and deployed on its own.
 
 ```
