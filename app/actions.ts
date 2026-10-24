@@ -28,6 +28,7 @@ export async function setLang(form: FormData) {
 // New number + name → join request → core/admin approve → phone → set PIN → signed in.
 // Known number → PIN (enter it, or set it the first time / after a reset).
 
+/** Sign in with a registered number. The PIN screen comes next. */
 export async function join(form: FormData) {
   const limit = await hit(`join:${await clientIp()}`, 20, 600);
   if (!limit.ok) return back('/', 'tooMany', { min: limit.retryMin });
@@ -35,26 +36,36 @@ export async function join(form: FormData) {
   const phone = normalizePhone(str(form, 'phone'));
   if (!phone) return back('/', 'errPhone');
   const [player] = await sql<Player[]>`select * from players where phone = ${phone}`;
-  if (!player) {
-    // Self sign-up: a join request that core/admin approve on the Members page.
-    const name = personName(form);
-    if (!name) return back('/', 'needName');
-    const mail = email(form);
-    if (!mail) return back('/', 'errEmail');
-    const skill = SKILL_LEVELS.find((s) => s === str(form, 'skill')) as SkillLevel | undefined;
-    if (!skill) return back('/', 'errSkill');
-    const gender = GENDERS.find((g) => g === str(form, 'gender')) as Gender | undefined;
-    if (!gender) return back('/', 'errGender');
-    await sql`
-      insert into players (first_name, last_name, phone, email, skill_level, gender, lang)
-      values (${name.first}, ${name.last}, ${phone}, ${mail}, ${skill}, ${gender}, ${await getLang()})
-      on conflict (phone) do nothing`;
-    return back('/', 'signupSent', { name: name.first });
-  }
+  if (!player) return back('/', 'needName');
   if (player.deactivated_at) return back('/', 'accountDeactivated');
   if (!player.approved_at) return back('/', 'signupPending');
   await claim(player.id);
   redirect('/'); // the PIN screen
+}
+
+/** Self registration: a request that core/admin approve on the Members page. */
+export async function register(form: FormData) {
+  const limit = await hit(`join:${await clientIp()}`, 20, 600);
+  if (!limit.ok) return back('/', 'tooMany', { min: limit.retryMin });
+
+  const name = personName(form);
+  if (!name) return back('/', 'errName');
+  const phone = normalizePhone(str(form, 'phone'));
+  if (!phone) return back('/', 'errRegPhone');
+  const mail = email(form);
+  if (!mail) return back('/', 'errEmail');
+  const skill = SKILL_LEVELS.find((s) => s === str(form, 'skill')) as SkillLevel | undefined;
+  if (!skill) return back('/', 'errSkill');
+  const gender = GENDERS.find((g) => g === str(form, 'gender')) as Gender | undefined;
+  if (!gender) return back('/', 'errGender');
+
+  const [existing] = await sql<Player[]>`select * from players where phone = ${phone}`;
+  if (existing) return back('/', existing.approved_at ? 'alreadyRegistered' : 'signupPending');
+  await sql`
+    insert into players (first_name, last_name, phone, email, skill_level, gender, lang)
+    values (${name.first}, ${name.last}, ${phone}, ${mail}, ${skill}, ${gender}, ${await getLang()})
+    on conflict (phone) do nothing`;
+  return back('/', 'signupSent', { name: name.first });
 }
 
 /** Players fix their own first and last name. */

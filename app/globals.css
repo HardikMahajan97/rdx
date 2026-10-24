@@ -536,7 +536,20 @@ th { color: var(--muted); font-weight: 600; }
 .status-edit .row { margin-top: 8px; }
 a.status { display: block; margin-bottom: 10px; text-decoration: none; }
 
-/* Sign-in: the "New here? Ask to join" part opens with one tap */
-details.signup { border-top: 1px solid var(--line); padding-top: 12px; }
-details.signup > summary { font-weight: 600; color: var(--text); min-height: 44px; display: flex; align-items: center; cursor: pointer; }
-details.signup > .stack { margin-top: 8px; }
+/* Sign-in page: a separate Register card with the approval notice */
+details.register > summary { display: grid; gap: 2px; min-height: 52px; align-content: center; cursor: pointer; padding-right: 28px; }
+details.register > summary > span:first-child { font: 700 1.25rem/1.2 var(--display); color: var(--text); }
+details.register > summary .muted { font-size: .9rem; }
+details.register > form { margin-top: 14px; }
+.notice {
+  --g: var(--blue-rgb);
+  position: relative; display: grid; gap: 4px; padding: 14px 16px 14px 48px; border-radius: var(--r);
+  background: linear-gradient(160deg, rgba(var(--g), .2), rgba(var(--g), .07));
+  border: 1px solid rgba(var(--g), .45); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1);
+  color: #dbe7ff; line-height: 1.5;
+}
+.notice::before {
+  content: 'i'; position: absolute; left: 14px; top: 15px; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; font: 700 .95rem/1 var(--display); color: var(--ink); background: #cfe0ff;
+}
+.notice b { color: #fff; font-family: var(--display); font-size: 1.05rem; }

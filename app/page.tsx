@@ -4,13 +4,16 @@ import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
 import { upcomingSessions } from '@/lib/sessions';
-import { cancelRequest, enterPin, forgotPin, join, leave, setPin, updateName } from './actions';
+import { cancelRequest, enterPin, forgotPin, join, leave, register, setPin, updateName } from './actions';
 import { ApplyForm } from './ui/ApplyForm';
 import { Submit } from './ui/Client';
 import { Loader, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
 import { AttendancePrompts, PlanCard, PlayerSessions, StaffDashboard } from './ui/Views';
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
+
+/** Messages that belong to the registration form, so it opens to show them. */
+const REGISTER_MSGS = ['needName', 'errName', 'errRegPhone', 'errEmail', 'errSkill', 'errGender'];
 
 export default function Home(props: Props) {
   return (
@@ -43,37 +46,48 @@ async function HomeContent({ searchParams }: Props) {
           <p className="muted">{t('welcomeHint')}</p>
         </div>
         <form action={join} className="card stack">
+          <h2>{t('signInTitle')}</h2>
           <label>
             {t('phone')}
             <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
           </label>
-          {/* Only new numbers need these; a known number goes straight to the PIN. */}
-          <details className="signup" open={msg === 'needName' || msg === 'errEmail' || msg === 'errSkill' || msg === 'errGender' || msg === 'errName'}>
-            <summary>{t('nameHint')}</summary>
-            <div className="stack">
-              <div className="grid2">
-                <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} /></label>
-                <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} /></label>
-              </div>
-              <label>{t('email')}<input name="email" type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="name@example.com" /></label>
-              <div className="grid2">
-                <label>{t('skillLevel')}
-                  <select name="skill" defaultValue="">
-                    <option value="" disabled>{t('choose')}</option>
-                    {SKILL_LEVELS.map((s) => <option key={s} value={s}>{t(`skill_${s}`)}</option>)}
-                  </select>
-                </label>
-                <label>{t('gender')}
-                  <select name="gender" defaultValue="">
-                    <option value="" disabled>{t('choose')}</option>
-                    {GENDERS.map((g) => <option key={g} value={g}>{t(`gender_${g}`)}</option>)}
-                  </select>
-                </label>
-              </div>
-            </div>
-          </details>
           <Submit className="btn-big">{t('continue')}</Submit>
         </form>
+
+        {/* New players: a request that the RDx admin / core team approve. */}
+        <details className="card register" open={REGISTER_MSGS.includes(msg ?? '')}>
+          <summary><span>{t('registerTitle')}</span><span className="muted">{t('registerSub')}</span></summary>
+          <form action={register} className="stack">
+            <div className="notice" role="note">
+              <b>{t('registerNoticeTitle')}</b>
+              <span>{t('registerNotice')}</span>
+            </div>
+            <div className="grid2">
+              <label>{t('firstName')}<input name="firstName" autoComplete="given-name" maxLength={40} required /></label>
+              <label>{t('lastName')}<input name="lastName" autoComplete="family-name" maxLength={40} required /></label>
+            </div>
+            <label>
+              {t('phone')}
+              <input name="phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" required />
+            </label>
+            <label>{t('email')}<input name="email" type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="name@example.com" required /></label>
+            <div className="grid2">
+              <label>{t('skillLevel')}
+                <select name="skill" defaultValue="" required>
+                  <option value="" disabled>{t('choose')}</option>
+                  {SKILL_LEVELS.map((s) => <option key={s} value={s}>{t(`skill_${s}`)}</option>)}
+                </select>
+              </label>
+              <label>{t('gender')}
+                <select name="gender" defaultValue="" required>
+                  <option value="" disabled>{t('choose')}</option>
+                  {GENDERS.map((g) => <option key={g} value={g}>{t(`gender_${g}`)}</option>)}
+                </select>
+              </label>
+            </div>
+            <Submit className="btn-big">{t('register')}</Submit>
+          </form>
+        </details>
       </div>
     );
   }
