@@ -61,11 +61,12 @@ export async function register(form: FormData) {
 
   const [existing] = await sql<Player[]>`select * from players where phone = ${phone}`;
   if (existing) return back('/', existing.approved_at ? 'alreadyRegistered' : 'signupPending');
-  await sql`
+  const added = await sql`
     insert into players (first_name, last_name, phone, email, skill_level, gender, lang)
     values (${name.first}, ${name.last}, ${phone}, ${mail}, ${skill}, ${gender}, ${await getLang()})
-    on conflict (phone) do nothing`;
-  return back('/', 'signupSent', { name: name.first });
+    on conflict (phone) do nothing returning id`;
+  // Two taps (or two phones) at once: the second one finds the first request already there.
+  return back('/', added.length ? 'signupSent' : 'signupPending', { name: name.first });
 }
 
 /** Players fix their own first and last name. */
@@ -148,6 +149,9 @@ export async function book(form: FormData) {
   const result = await withLockedSession(int(form, 'sessionId'), async (tx, session): Promise<Msg> => {
     const batch = (await getBatch(session.batch_id))!;
     if (!timing(session, batch).canBook) return ['bookingClosed'];
+    // Switched off while this request was in flight: deactivating takes the same row lock.
+    const [still] = await tx`select 1 from players where id = ${me.id} and deactivated_at is null for share`;
+    if (!still) return ['accountDeactivated'];
 
     const [existing] = await tx<Booking[]>`
       select * from bookings where session_id = ${session.id} and player_id = ${me.id} for update`;

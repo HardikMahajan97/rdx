@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { savePlan } from '../staff-actions';
 import { Submit } from './Client';
 
@@ -43,6 +44,9 @@ export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames
     | 'sessions' | 'topUpSessions' | 'wholeMonth' | 'startsOn' | 'endsOn' | 'note' | 'amount' | 'submit', string>;
   dayNames: string[]; // index 0 = Sun
 }) {
+  // One-time token, filled in on first submit and renewed after each result message (the URL changes),
+  // so a replayed submit can't apply twice.
+  const params = useSearchParams().toString();
   const sorted = [...defaults.days].sort().join();
   const initial: Preset = defaults.kind === 'wallet' ? 'wallet'
     : ((Object.entries(PRESET_DAYS).find(([, d]) => d.join() === sorted)?.[0] ?? 'custom') as Preset);
@@ -70,7 +74,9 @@ export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames
   const dateError = endsOn && startsOn > endsOn;
 
   return (
-    <form action={savePlan} className="stack">
+    <form action={savePlan} className="stack"
+      onSubmit={(e) => { const t = e.currentTarget.elements.namedItem('token') as HTMLInputElement; if (!t.value) t.value = crypto.randomUUID(); }}>
+      <input key={params} type="hidden" name="token" defaultValue="" />
       {defaults.planId && <input type="hidden" name="planId" value={defaults.planId} />}
       {defaults.requestId && <input type="hidden" name="requestId" value={defaults.requestId} />}
       {defaults.phone && <input type="hidden" name="phone" value={defaults.phone} />}

@@ -1,7 +1,7 @@
 'use server';
 
 import { refresh } from 'next/cache';
-import { sql, type Booking, type BookingStatus, type Membership, type Player, type PlanType } from '@/lib/db';
+import { sql, type Tx, type Booking, type BookingStatus, type Membership, type Player, type PlanType } from '@/lib/db';
 import { canResetPin, normalizePhone, requireStaff } from '@/lib/auth';
 import { back, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import { ALL_DAYS, assignPlan, chargeBookings, ledger, planLive, recheckBookings, refundBookings } from '@/lib/members';
@@ -15,12 +15,15 @@ const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 // ---------- Roster ----------
 // Players mark their own attendance ("I'm coming" / "I played"); staff can correct it when someone forgets or can't.
 
-/** Fee collected, or (for someone who backed out after paying) refunded. */
+/**
+ * Fee collected, or (for someone who backed out after paying) refunded. The form says which state it wants
+ * (`paid` = 1 or 0), so a double tap or two staff pressing the same button end in the same place instead of undoing each other.
+ */
 export async function togglePaid(form: FormData) {
   await requireStaff('roster');
   const sid = int(form, 'sessionId');
   await sql`
-    update bookings set paid = not paid, updated_at = now()
+    update bookings set paid = ${int(form, 'paid') === 1}, updated_at = now()
     where id = ${int(form, 'bookingId')} and session_id = ${sid}`;
   refresh(); // re-render the roster in place, no navigation or scroll jump
 }
@@ -64,13 +67,14 @@ export async function setBookingStatus(form: FormData) {
   back(`/roster?sid=${sid}`, key);
 }
 
+/** Applies only if the capacity is still what the staff member was looking at, so repeated taps or a second staff member don't stack. */
 export async function changeCourts(form: FormData) {
   await requireStaff('roster');
   const sid = int(form, 'sessionId');
   const delta = int(form, 'delta') > 0 ? 1 : -1;
   await sql`
     update sessions s set capacity = greatest(0, s.capacity + ${delta} * b.players_per_court)
-    from batches b where s.id = ${sid} and b.id = s.batch_id`;
+    from batches b where s.id = ${sid} and b.id = s.batch_id and s.capacity = ${int(form, 'from')}`;
   refresh(); // re-render the roster in place, no navigation or scroll jump
 }
 
@@ -78,7 +82,8 @@ export async function cancelSession(form: FormData) {
   const staff = await requireStaff('cancel');
   const sid = int(form, 'sessionId');
   if (str(form, 'confirm') !== 'CANCEL') back(`/roster?sid=${sid}`, 'cancelConfirm');
-  await withLockedSession(sid, async (tx) => {
+  await withLockedSession(sid, async (tx, session) => {
+    if (session.cancelled) return;
     // Give back any plan sessions already charged.
     const charged = await tx<{ id: number }[]>`select id from bookings where session_id = ${sid} and charged`;
     await refundBookings(tx, charged.map((b) => b.id), staff.id);
@@ -120,8 +125,10 @@ export async function approveSignup(form: FormData) {
   const staff = await requireStaff('members');
   const [p] = await sql<Player[]>`
     update players set approved_at = now(), approved_by = ${staff.id}
-    where id = ${int(form, 'id')} and approved_at is null returning *`;
-  back('/members', 'playerApproved', { name: p?.name ?? '' });
+    where id = ${int(form, 'id')} and approved_at is null and deactivated_at is null returning *`;
+  // Lost the race: another staff member approved or rejected this person first.
+  if (!p) back('/members', 'alreadyHandled');
+  back('/members', 'playerApproved', { name: p.name });
 }
 
 /** Turn a sign-up down. The request is removed; the number can ask again later. */
@@ -133,7 +140,8 @@ export async function rejectSignup(form: FormData) {
       and not exists (select 1 from memberships m where m.player_id = p.id)
       and not exists (select 1 from membership_requests r where r.player_id = p.id)
     returning *`;
-  back('/members', 'signupRejected', { name: p?.name ?? '' });
+  if (!p) back('/members', 'alreadyHandled');
+  back('/members', 'signupRejected', { name: p.name });
 }
 
 // ---------- Memberships ----------
@@ -149,7 +157,7 @@ export async function quoteRequest(form: FormData) {
       sessions_requested = coalesce(${sessions}, r.sessions_requested), handled_by = ${staff.id}, handled_at = now()
     from players p where r.id = ${int(form, 'requestId')} and p.id = r.player_id and r.status in ('pending', 'quoted')
     returning p.name`;
-  back('/members', r ? 'quoteSent' : 'noRequests', { name: r?.name ?? '', amount });
+  back('/members', r ? 'quoteSent' : 'alreadyHandled', { name: r?.name ?? '', amount });
 }
 
 /**
@@ -197,7 +205,9 @@ export async function savePlan(form: FormData) {
     if (requestId) {
       [player] = await tx<Player[]>`
         select p.* from membership_requests r join players p on p.id = r.player_id
-        where r.id = ${requestId} and r.status in ('pending', 'quoted')`;
+        where r.id = ${requestId} and r.status in ('pending', 'quoted')
+        for update of r`; // a second staff member activating the same request waits here, then finds it handled
+      if (!player) return ['alreadyHandled'];
     } else {
       const phone = normalizePhone(str(form, 'phone'));
       if (!phone) return ['errPhone'];
@@ -219,6 +229,7 @@ export async function savePlan(form: FormData) {
       select * from memberships where player_id = ${player.id} and status = 'active' for update`;
     let result: [Key, Record<string, string | number>];
     if (old && planLive(old) && old.kind === 'wallet' && kind === 'wallet') {
+      if (!(await firstUse(tx, form))) return ['alreadyHandled'];
       // Top-up: same wallet, bigger balance, later expiry if one was given.
       await tx`
         update memberships set sessions_total = sessions_total + ${total},
@@ -229,6 +240,7 @@ export async function savePlan(form: FormData) {
       result = ['walletToppedUp', { name: player.name, n: total }];
     } else {
       if (old && planLive(old)) return ['errHasPlan', { name: player.name }];
+      if (!(await firstUse(tx, form))) return ['alreadyHandled'];
       if (old) await tx`update memberships set status = 'ended' where id = ${old.id}`;
       const [m] = await tx<{ id: number }[]>`
         insert into memberships (player_id, kind, batch_id, days, sessions_total, starts_on, ends_on, note, amount_rupees, created_by)
@@ -246,6 +258,19 @@ export async function savePlan(form: FormData) {
   back('/members', key, vars);
 }
 
+/**
+ * One-time form token (made when the form opens). A resubmitted form, such as a retry after a bad connection,
+ * can't credit the same top-up or create the same plan twice. Lives in the transaction, so it only counts if the write does.
+ */
+async function firstUse(tx: Tx, form: FormData) {
+  const token = str(form, 'token').slice(0, 64);
+  if (!token) return true;
+  const rows = await tx`
+    insert into rate_limits (key, count, window_start) values (${`form:${token}`}, 1, now())
+    on conflict (key) do nothing returning key`;
+  return rows.length > 0;
+}
+
 export async function endPlan(form: FormData) {
   await requireStaff('members');
   await sql.begin(async (tx) => {
@@ -258,10 +283,10 @@ export async function endPlan(form: FormData) {
 
 export async function rejectRequest(form: FormData) {
   const staff = await requireStaff('members');
-  await sql`
+  const done = await sql`
     update membership_requests set status = 'rejected', handled_by = ${staff.id}, handled_at = now()
-    where id = ${int(form, 'requestId')} and status in ('pending', 'quoted')`;
-  back('/members', 'requestRejected');
+    where id = ${int(form, 'requestId')} and status in ('pending', 'quoted') returning id`;
+  back('/members', done.length ? 'requestRejected' : 'alreadyHandled');
 }
 
 // ---------- Admin ----------
@@ -293,7 +318,12 @@ export async function resetPin(form: FormData) {
   const path = safePath(str(form, 'back') || '/members');
   const [target] = await sql<Player[]>`select * from players where id = ${int(form, 'id')}`;
   if (!target || !canResetPin(staff, target)) back(path, 'errCantReset');
-  await sql`update players set pin_hash = null, pin_reset_requested_at = null where id = ${target.id}`;
+  // From the "Forgot PIN" list: only if the request is still open. If another staff member already reset it and the
+  // player has chosen a new PIN, a second reset would wipe that new PIN.
+  const [done] = await sql`
+    update players set pin_hash = null, pin_reset_requested_at = null
+    where id = ${target.id} and (${str(form, 'requested') !== '1'} or pin_reset_requested_at is not null) returning id`;
+  if (!done) back(path, 'alreadyHandled');
   await clear(`pin:${target.id}`);
   back(path, 'pinReset', { name: target.name });
 }

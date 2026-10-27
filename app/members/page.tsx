@@ -6,7 +6,7 @@ import { ALL_DAYS, planLeft, planLive } from '@/lib/members';
 import { getBatches } from '@/lib/sessions';
 import { fmtDate, istDate } from '@/lib/time';
 import { addPlayer, approveSignup, dismissPinRequest, rejectSignup, endPlan, quoteRequest, rejectRequest, resetPin, resetPinByPhone } from '../staff-actions';
-import { Submit } from '../ui/Client';
+import { AutoRefresh, Submit } from '../ui/Client';
 import { PlanForm, type PlanDefaults } from '../ui/PlanForm';
 import { initials, Msg, Skeleton, Tile, Toolbar } from '../ui/Shared';
 
@@ -87,6 +87,7 @@ async function MembersContent({ searchParams }: Props) {
     <>
       <Toolbar me={me} t={t} here="/members" lang={me.lang} />
       <Msg t={t} msg={msg} mv={mv} />
+      <AutoRefresh seconds={15} />
 
       <div className="tiles">
         <Tile label={t('tilePending')} value={requests.filter((r) => r.status === 'pending').length} tone={requests.length ? 'warn' : undefined}
@@ -146,6 +147,7 @@ async function MembersContent({ searchParams }: Props) {
                     <span className="row">
                       <form action={resetPin}>
                         <input type="hidden" name="id" value={p.id} />
+                        <input type="hidden" name="requested" value="1" />
                         <Submit className="btn-sm btn-warn">{t('resetPin')}</Submit>
                       </form>
                       <form action={dismissPinRequest}>

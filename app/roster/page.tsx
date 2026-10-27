@@ -105,6 +105,7 @@ async function RosterContent({ searchParams }: Props) {
                   {r.due > 0 && (
                     <form action={togglePaid}>
                       {hidden(r.id)}
+                      <input type="hidden" name="paid" value={r.paid ? 0 : 1} />
                       {r.status === 'withdrawn'
                         ? <Submit className="btn-sm btn-danger">{t('refund', { amount: r.due })}</Submit>
                         : <Submit className={`btn-sm ${r.paid ? 'btn-ok' : 'btn-warn'}`}>{r.paid ? t('paid') : t('collect', { amount: r.due })}</Submit>}
@@ -144,8 +145,8 @@ async function RosterContent({ searchParams }: Props) {
               people={snap.active.map((r) => ({ name: r.name, kind: r.covered ? 'member' : 'floater', guests: r.guests, here: r.status === 'present' }))}
               labels={{ court: t('court'), member: t('legendMember'), floater: t('legendFloater'), friend: t('legendFriend'), open: t('openSpot'), extra: t('overCap') }} />
             <div className="row" style={{ marginTop: 14 }}>
-              <form action={changeCourts}>{hidden()}<input type="hidden" name="delta" value="1" /><Submit className="btn-sm">{t('addCourt')}</Submit></form>
-              <form action={changeCourts}>{hidden()}<input type="hidden" name="delta" value="-1" /><Submit className="btn-sm btn-ghost">{t('removeCourt')}</Submit></form>
+              <form action={changeCourts}>{hidden()}<input type="hidden" name="from" value={snap.capacity} /><input type="hidden" name="delta" value="1" /><Submit className="btn-sm">{t('addCourt')}</Submit></form>
+              <form action={changeCourts}>{hidden()}<input type="hidden" name="from" value={snap.capacity} /><input type="hidden" name="delta" value="-1" /><Submit className="btn-sm btn-ghost">{t('removeCourt')}</Submit></form>
               <a className="btn btn-sm btn-primary" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}>{t('share')}</a>
             </div>
           </section>
