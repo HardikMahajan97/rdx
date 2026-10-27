@@ -5,7 +5,8 @@ import { batchName, translator, type Key, type T } from '@/lib/i18n';
 import { getBatches, seatFee } from '@/lib/sessions';
 import { fmtDate, fmtTime, istDate, istInstant } from '@/lib/time';
 import { deactivatePlayer, reactivatePlayer, removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
-import { Submit } from '../ui/Client';
+import { AutoRefresh, Submit } from '../ui/Client';
+import { PostsAdmin } from '../ui/PostsAdmin';
 import { initials, Msg, Skeleton, Toolbar } from '../ui/Shared';
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
@@ -52,6 +53,7 @@ async function AdminContent({ searchParams }: Props) {
     <>
       <Toolbar me={me} t={t} here="/admin" lang={me.lang} />
       <Msg t={t} msg={msg} mv={mv} />
+      <AutoRefresh seconds={30} />
 
       <div className="cols">
       <div>
@@ -119,6 +121,8 @@ async function AdminContent({ searchParams }: Props) {
       {batches.map((b) => <BatchForm key={b.id} t={t} batch={b} />)}
       </div>
       </div>
+
+      <PostsAdmin />
 
       <h3>{t('players')}</h3>
       <div className="cols">

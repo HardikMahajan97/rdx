@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-shuttle" viewBox="0 0 40 40">
+      <path d="M7.6 3.6h24.8L24.7 24h-9.4z" fill="#ffe443" fill-opacity=".62" />
+      <path d="M11.75 14.6h16.5L24.7 24h-9.4z" fill="#ffd60a" />
+      <path d="M7.98 4.6L12.4 9.6M10.98 4.6L9.86 9.6M10.98 4.6L14.93 9.6M13.99 4.6L12.4 9.6M13.99 4.6L17.47 9.6M16.99 4.6L14.93 9.6M16.99 4.6L20 9.6M20 4.6L17.47 9.6M20 4.6L22.53 9.6M23.01 4.6L20 9.6M23.01 4.6L25.07 9.6M26.01 4.6L22.53 9.6M26.01 4.6L27.6 9.6M29.02 4.6L25.07 9.6M29.02 4.6L30.14 9.6M32.02 4.6L27.6 9.6M9.86 9.6L13.81 14.6M12.4 9.6L11.75 14.6M12.4 9.6L15.88 14.6M14.93 9.6L13.81 14.6M14.93 9.6L17.94 14.6M17.47 9.6L15.88 14.6M17.47 9.6L20 14.6M20 9.6L17.94 14.6M20 9.6L22.06 14.6M22.53 9.6L20 14.6M22.53 9.6L24.12 14.6M25.07 9.6L22.06 14.6M25.07 9.6L26.19 14.6M27.6 9.6L24.12 14.6M27.6 9.6L28.25 14.6M30.14 9.6L26.19 14.6" stroke="#ffe95e" stroke-width="0.55" fill="none" />
+      <path d="M10.98 4.6L16.48 24 M13.99 4.6L17.65 24 M16.99 4.6L18.82 24 M20 4.6L20 24 M23.01 4.6L21.18 24 M26.01 4.6L22.35 24 M29.02 4.6L23.52 24" stroke="#fff27a" stroke-width="0.95" fill="none" />
+      <path d="M11.75 14.6h16.5M9.86 9.6h20.27" stroke="#fff27a" stroke-width="0.80" />
+      <path d="M10.98 4.6L16.48 24 M13.99 4.6L17.65 24 M16.99 4.6L18.82 24 M20 4.6L20 24 M23.01 4.6L21.18 24 M26.01 4.6L22.35 24 M29.02 4.6L23.52 24" stroke="#e0b000" stroke-width="0.50" fill="none" stroke-dasharray="0 10 9.4" />
+      <path d="M7.1 2.6h25.8l-.6 2.2H7.7z" fill="#fff064" />
+      <path d="M7.1 2.6h25.8" stroke="#fffbd0" stroke-width=".5" />
+      <rect x="15.25" y="24" width="9.5" height=".85" fill="#2f9e57" />
+      <path d="M15.25 24.85h9.5v2.75a4.75 4.75 0 0 1-9.5 0z" fill="#f7f4ec" />
+      <path d="M22.6 24.85h2.15v2.75a4.75 4.75 0 0 1-2.9 4.37 6.6 6.6 0 0 0 .75-3z" fill="#d6d0c4" />
+    </symbol>
+<symbol id="i-racquet" viewBox="0 0 40 40">
+      <ellipse cx="22" cy="13" rx="9" ry="11" transform="rotate(35 22 13)" fill="none" stroke="currentColor" stroke-width="2.4" />
+      <path d="M16 20l-9 13" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" />
+      <path d="M17 6l11 15M14 10l12 9M22 5l2 18" stroke="currentColor" stroke-width=".8" opacity=".5" />
+    </symbol>
+<symbol id="i-vote" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" fill="none" stroke="currentColor" stroke-width="2" /></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0113 0c0 5-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="10" r="2.4" fill="currentColor" /></symbol>
+<symbol id="i-rotate" viewBox="0 0 24 24"><path d="M19 12a7 7 0 01-12 4.9M5 12a7 7 0 0112-4.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M17 3v4.3h-4.3M7 21v-4.3h4.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4m0 1h11l-2.5 4L17 13H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="2" /><path d="M4.8 20c.6-3.7 3.6-5.6 7.2-5.6s6.6 1.9 7.2 5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></symbol>
+<symbol id="i-rupee" viewBox="0 0 24 24"><path d="M7 5.5h10M7 10h10M7 5.5h3.2a3.6 3.6 0 010 7.2H7l8 6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M3 19.5c.5-3.3 3-5 6-5s5.5 1.7 6 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M15.5 5.6a3 3 0 010 5.8M18 14.9c1.7.6 2.8 2 3 4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></symbol>
+</svg>

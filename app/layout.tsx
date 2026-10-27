@@ -31,6 +31,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </svg>
             {name}
           </Link>
+          {/* Plain link on purpose: `/?home` is answered by the proxy with the promo pages, not by the app router. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a className="home-link" href="/?home">
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
+            Home
+          </a>
         </header>
         <main>{children}</main>
         <Analytics />

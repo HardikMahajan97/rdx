@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Being a member | RD’x Badminton Community</title>
+  <meta name="description" content="Fixed and wallet plans, and who pays what at RD’x.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:title" content="Being a member | RD’x Badminton Community">
+  <meta property="og:description" content="Fixed and wallet plans, and who pays what at RD’x.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/site/assets/img/og.png">
+  <link rel="icon" href="/site/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="module" src="/site/assets/js/site.js"></script>
+</head>
+<body data-page="member">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="/?home" aria-label="RD’x home"><svg class="brand-icon" aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-shuttle" /></svg><span class="mark">RD<i>’x</i></span></a>
+    <nav aria-label="Pages" id="nav"><a href="/about">About</a><a href="/play">Play</a><a href="/membership" aria-current="page">Membership</a><a href="/news">News</a><a href="/join">Register</a></nav>
+    <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
+    <a class="btn btn-red btn-sm" data-app href="/?app=1">Join</a>
+  </header>
+
+  <main id="main">
+    <header class="page-head">
+      <h1>Being a member</h1>
+      <p class="page-intro">A plan pays for your seat. You still vote for each session, so the team knows who is coming.</p>
+    </header>
+
+    <section class="section" aria-labelledby="plans-title">
+      <h2 id="plans-title">Two kinds of plan</h2>
+      <div class="plans">
+        <article class="plan">
+          <b>Fixed plan</b>
+          <p>One batch, on the days you choose: every day, weekdays, weekends or your own days. You vote for your own batch on your own days.</p>
+        </article>
+        <article class="plan">
+          <b>Wallet plan</b>
+          <p>A balance of sessions you can use in any batch, on any day. Top it up when it runs low.</p>
+        </article>
+      </div>
+      <p class="about-text" style="margin-top:16px">Already registered? Ask for a plan from the app. The team tells you the amount, and your plan starts once the payment is received.</p>
+    </section>
+
+    <section class="section day" aria-labelledby="pay-title">
+      <h2 id="pay-title">Who pays what</h2>
+      <ol class="chain" id="chain">
+        <li><span class="node"><svg><use href="/site/assets/img/sprite.svg#i-vote" /></svg></span><b>Vote for a slot</b><span class="tag">everyone votes, members too</span></li>
+        <li><span class="node"><svg><use href="/site/assets/img/sprite.svg#i-user" /></svg></span><b>Are you a member?</b><span class="tag">Yes: your plan pays for your seat</span></li>
+        <li><span class="node"><svg><use href="/site/assets/img/sprite.svg#i-rupee" /></svg></span><b>Not a member?</b><span class="tag">You pay for that session</span></li>
+        <li><span class="node"><svg><use href="/site/assets/img/sprite.svg#i-people" /></svg></span><b>Bringing friends?</b><span class="tag">They pay the session fee</span></li>
+      </ol>
+    </section>
+    <section class="section cta-band" aria-label="Join RD’x">
+      <div class="band">
+        <div><b>Ready to play?</b><span>Register in a minute, or log in if you already have an account.</span></div>
+        <div class="cta"><a class="btn btn-red" data-app href="/?app=1">Join RD’x</a><a class="btn btn-ghost" data-app href="/?app=1">Log in</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot" data-hide-dock>
+    <span class="mark">RD<i>’x</i></span>
+    <nav class="foot-links" aria-label="Footer"><a href="/about">About</a><a href="/play">How to play</a><a href="/membership">Being a member</a><a href="/news">News</a><a href="/join">Register</a><a data-app href="/?app=1">Join</a></nav>
+    <span class="muted" id="venue"></span>
+    <span class="muted">© <span id="year"></span> RD’x Badminton Community</span>
+  </footer>
+
+  <!-- Phones: a join bar that stays out of the way of the page's own join buttons -->
+  <div class="dock" id="dock" aria-hidden="true">
+    <a class="btn btn-red" data-app tabindex="-1" href="/?app=1">Join RD’x</a>
+  </div>
+</body>
+</html>

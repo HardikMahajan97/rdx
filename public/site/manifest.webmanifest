@@ -1,12 +1,12 @@
 {
-  "name": "RDx Badminton Community",
-  "short_name": "RDx",
+  "name": "RD’x Badminton Community",
+  "short_name": "RD’x",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050506",
   "theme_color": "#050506",
   "icons": [
-    { "src": "/assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "/assets/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+    { "src": "/site/site/assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/site/site/assets/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
   ]
 }

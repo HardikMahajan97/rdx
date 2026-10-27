@@ -1,2 +1,9 @@
 User-agent: *
+Allow: /$
+Allow: /about
+Allow: /play
+Allow: /membership
+Allow: /news
+Allow: /join
+Allow: /site/assets/
 Disallow: /

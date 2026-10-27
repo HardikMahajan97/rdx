@@ -18,18 +18,15 @@ All animation is SVG and CSS transforms, and it all stops when the phone's "redu
 
 Tested at 320, 360, 390 and 430 px wide, in phone landscape (667×375, 844×390), and on a tablet and a laptop. Every size has no sideways scrolling, tap targets of at least 44 px and text of at least 0.8rem. Scrolling stays at 60 fps with the CPU slowed 4×.
 
-Plain HTML, CSS and JavaScript with no build step, plus two small Vercel functions for posting. It's separate from the booking app in the parent folder and deployed on its own.
+Plain HTML, CSS and JavaScript with no build step, plus two small API routes for posting. It is deployed together with the booking app, on the same website.
 
 ```
-index.html            the site
-admin.html            where RDx posts announcements (/admin, not linked from the site)
+public/site/*.html    the pages (index, about, play, membership, news, join)
 assets/js/config.js   team names and numbers, session times, app link, venue: edit here
 assets/js/site.js     renders the page and the announcements feed
-assets/js/admin.js    the posting page
 assets/css/           styles (same colours as the booking app)
-api/posts.js          list / publish / delete posts
-api/sign.js           password check + one-time upload signature
-dev.mjs               local preview server
+(in the app) lib/site/posts.js, sign.js   list / publish / delete posts; one-time upload signature
+(in the app) app/ui/PostsAdmin.tsx         the posting form, inside the /admin page
 ```
 
 ## Changing the text, numbers or times
@@ -46,7 +43,7 @@ The other wording is in `index.html`. Push to GitHub and Vercel publishes the ch
 
 ## How announcements work
 
-RDx opens **`https://<your-site>/admin`**, enters the posting password and fills in:
+An admin signs in to the app as usual, opens **`https://<your-site>/admin`**, scrolls to **Announcements** and fills in:
 
 - **Type:** Announcement, Tournament, Video or Photos. These match the filter buttons on the site.
 - **Title** and optional details.
@@ -61,36 +58,30 @@ Under the hood, each post is a small JSON file in Cloudinary, so there's no data
 
 ## Put it online (Vercel)
 
+The promo pages and the booking app are **one Vercel project**, so there's nothing separate to deploy. Pushing to `main` publishes both.
+
 1. **Cloudinary** (free): sign up at https://cloudinary.com. On the dashboard, go to **Settings → API Keys** and note the **Cloud name**, **API key** and **API secret**.
-2. **Vercel:** at https://vercel.com, click **Add New → Project** and import this GitHub repository.
-   - Set **Root Directory** to `rdx-site`.
-   - Set **Framework Preset** to **Other**. There's no build command.
-3. Under **Environment Variables**, add:
+2. In the Vercel project, under **Settings → Environment Variables**, add:
 
    | Name | Value |
    |---|---|
    | `CLOUDINARY_CLOUD_NAME` | from step 1 |
    | `CLOUDINARY_API_KEY` | from step 1 |
    | `CLOUDINARY_API_SECRET` | from step 1 |
-   | `ADMIN_PASSWORD` | a password of 10+ characters for posting; share it only with whoever posts |
 
-4. Click **Deploy**. Optionally connect your own domain under **Settings → Domains**. Vercel adds HTTPS for free.
+3. Redeploy. If you had a separate promo project on Vercel, you can delete it, and point its domain at this project.
 
-The site and the booking app are two Vercel projects from the same repository: this one with root `rdx-site`, the app with the repository root.
+Visitors without a sign-in see the promo at `/`; signed-in players go straight to the app. The promo pages are static files, so they use no server time, and the app's pages never load promo scripts.
 
-**Why Vercel rather than S3?** S3 can only serve files. It can't run the two small functions that keep the Cloudinary secret safe and check the posting password. It also needs CloudFront added for HTTPS on your own domain. Vercel's free plan does all of that, with a global CDN. The heavy files (videos and photos) live in Cloudinary either way, so hosting costs stay at zero.
+**Why Vercel rather than S3?** S3 can only serve files. It can't run the two small functions that keep the Cloudinary secret safe and check admin sign-in. It also needs CloudFront added for HTTPS on your own domain. Vercel's free plan does all of that, with a global CDN. The heavy files (videos and photos) live in Cloudinary either way, so hosting costs stay at zero.
 
 ## Try it on your computer
 
-You need Node.js 20 or newer. The setup script in the parent folder installs it.
-
 ```bash
-cd rdx-site
-cp .env.example .env      # optional: add Cloudinary keys + ADMIN_PASSWORD to test posting
-npm run dev               # http://localhost:5173 and http://localhost:5173/admin
+npm run local             # the whole site: http://localhost:3000, and the posting form in /admin
 ```
 
-Without Cloudinary keys, the site works and the announcements list shows its empty state.
+To test posting, add the four Cloudinary /  values (see `env.example` in this folder) to `.env.local`. Without them the site works and the announcements list shows its empty state.
 
 ## Free places to keep photos and videos
 
@@ -109,9 +100,8 @@ Free-tier limits change, so check each provider's pricing page before relying on
 
 ## Security notes
 
-- The Cloudinary secret and posting password only exist on the server, as Vercel environment variables.
-- Posting requires the password. Wrong guesses are slowed down and limited.
+- The Cloudinary secret only exists on the server, as a Vercel environment variable.
+- Posting requires an admin signed in with their PIN (core members can't post). Requests from other websites are refused.
 - Posts can only show media from your own Cloudinary account or YouTube.
 - All text is shown as plain text, so a post can't inject code into the page.
-- `/admin` is hidden from search engines.
-- Change `ADMIN_PASSWORD` in Vercel whenever someone who knew it shouldn't post any more, then redeploy.
+- To stop someone posting, change their role (Admin page → Staff). There's no shared password to rotate.

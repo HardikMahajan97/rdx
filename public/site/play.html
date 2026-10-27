@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How to play | RD’x Badminton Community</title>
+  <meta name="description" content="Four badminton shots and how a RD’x slot works, from voting to the final smash.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:title" content="How to play | RD’x Badminton Community">
+  <meta property="og:description" content="Four badminton shots and how a RD’x slot works, from voting to the final smash.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/site/assets/img/og.png">
+  <link rel="icon" href="/site/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="module" src="/site/assets/js/site.js"></script>
+</head>
+<body data-page="play">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="/?home" aria-label="RD’x home"><svg class="brand-icon" aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-shuttle" /></svg><span class="mark">RD<i>’x</i></span></a>
+    <nav aria-label="Pages" id="nav"><a href="/about">About</a><a href="/play" aria-current="page">Play</a><a href="/membership">Membership</a><a href="/news">News</a><a href="/join">Register</a></nav>
+    <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
+    <a class="btn btn-red btn-sm" data-app href="/?app=1">Join</a>
+  </header>
+
+  <main id="main">
+    <header class="page-head">
+      <h1>How to play</h1>
+      <p class="page-intro">Four shots you'll see on court, and how a slot works from vote to final smash.</p>
+    </header>
+
+    <section class="section shots" aria-labelledby="shots-title">
+      <h2 id="shots-title">Four shots you'll play</h2>
+      <div class="shot-row" id="shot-row"></div>
+    </section>
+
+    <section class="section day" aria-labelledby="day-title">
+      <h2 id="day-title">A slot, start to finish</h2>
+      <ol class="chain timed" id="chain">
+        <li><span class="node"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-vote" /></svg></span><b>Vote</b><span class="tag">any time before</span></li>
+        <li><span class="node"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-clock" /></svg></span><b>Confirm "I'm coming"</b><span class="tag">from 12 h before</span></li>
+        <li><span class="node"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-lock" /></svg></span><b>Backing out closes</b><span class="tag">30 min before</span></li>
+        <li><span class="node"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-racquet" /></svg></span><b>Play</b><span class="tag" id="chain-times">morning or evening</span></li>
+        <li><span class="node"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-flag" /></svg></span><b>Tap "I played"</b><span class="tag">after the game</span></li>
+      </ol>
+    </section>
+    <section class="section cta-band" aria-label="Join RD’x">
+      <div class="band">
+        <div><b>Ready to play?</b><span>Register in a minute, or log in if you already have an account.</span></div>
+        <div class="cta"><a class="btn btn-red" data-app href="/?app=1">Join RD’x</a><a class="btn btn-ghost" data-app href="/?app=1">Log in</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot" data-hide-dock>
+    <span class="mark">RD<i>’x</i></span>
+    <nav class="foot-links" aria-label="Footer"><a href="/about">About</a><a href="/play">How to play</a><a href="/membership">Being a member</a><a href="/news">News</a><a href="/join">Register</a><a data-app href="/?app=1">Join</a></nav>
+    <span class="muted" id="venue"></span>
+    <span class="muted">© <span id="year"></span> RD’x Badminton Community</span>
+  </footer>
+
+  <!-- Phones: a join bar that stays out of the way of the page's own join buttons -->
+  <div class="dock" id="dock" aria-hidden="true">
+    <a class="btn btn-red" data-app tabindex="-1" href="/?app=1">Join RD’x</a>
+  </div>
+</body>
+</html>

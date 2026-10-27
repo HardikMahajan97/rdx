@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>News | RD’x Badminton Community</title>
+  <meta name="description" content="Announcements, tournaments, videos and photos from RD’x.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:title" content="News | RD’x Badminton Community">
+  <meta property="og:description" content="Announcements, tournaments, videos and photos from RD’x.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/site/assets/img/og.png">
+  <link rel="icon" href="/site/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="module" src="/site/assets/js/site.js"></script>
+</head>
+<body data-page="news">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="/?home" aria-label="RD’x home"><svg class="brand-icon" aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-shuttle" /></svg><span class="mark">RD<i>’x</i></span></a>
+    <nav aria-label="Pages" id="nav"><a href="/about">About</a><a href="/play">Play</a><a href="/membership">Membership</a><a href="/news" aria-current="page">News</a><a href="/join">Register</a></nav>
+    <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
+    <a class="btn btn-red btn-sm" data-app href="/?app=1">Join</a>
+  </header>
+
+  <main id="main">
+    <header class="page-head">
+      <h1>News</h1>
+      <p class="page-intro">Announcements, tournaments, videos and photos from RD’x.</p>
+    </header>
+
+    <section class="section upcoming" id="upcoming" hidden aria-labelledby="upcoming-title">
+      <h2 id="upcoming-title">Coming up</h2>
+      <div class="events" id="events"></div>
+    </section>
+
+    <section class="section" id="news" aria-label="Announcements">
+      <div class="filters" role="tablist" aria-label="Filter announcements" id="filters">
+        <button role="tab" aria-selected="true" data-kind="all">All</button>
+        <button role="tab" aria-selected="false" data-kind="announcement">News</button>
+        <button role="tab" aria-selected="false" data-kind="tournament">Tournaments</button>
+        <button role="tab" aria-selected="false" data-kind="video">Videos</button>
+        <button role="tab" aria-selected="false" data-kind="photos">Photos</button>
+      </div>
+      <div class="feed" id="feed" aria-live="polite">
+        <div class="post skeleton"></div><div class="post skeleton"></div>
+      </div>
+      <button class="btn btn-ghost more" id="more" hidden>Show more</button>
+    </section>
+  </main>
+
+  <footer class="foot" data-hide-dock>
+    <span class="mark">RD<i>’x</i></span>
+    <nav class="foot-links" aria-label="Footer"><a href="/about">About</a><a href="/play">How to play</a><a href="/membership">Being a member</a><a href="/news">News</a><a href="/join">Register</a><a data-app href="/?app=1">Join</a></nav>
+    <span class="muted" id="venue"></span>
+    <span class="muted">© <span id="year"></span> RD’x Badminton Community</span>
+  </footer>
+
+  <!-- Phones: a join bar that stays out of the way of the page's own join buttons -->
+  <div class="dock" id="dock" aria-hidden="true">
+    <a class="btn btn-red" data-app tabindex="-1" href="/?app=1">Join RD’x</a>
+  </div>
+
+  <dialog class="viewer" id="viewer" aria-label="Photo">
+    <button class="viewer-close" aria-label="Close">✕</button>
+    <img alt="">
+  </dialog>
+</body>
+</html>

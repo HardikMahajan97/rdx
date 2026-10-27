@@ -248,4 +248,5 @@ Players mark their own attendance. On the roster staff see each player's status 
 | `lib/` | Sign-in and PINs (`auth.ts`), slot timing (`sessions.ts`), plans (`members.ts`), translations (`i18n.ts`) |
 | `db/schema.sql` | Database tables; safe to rerun |
 | `scripts/` | Setup, database checks and the Neon → local copy |
-| `rdx-site/` | The public RDx promo website (separate Vercel project; see `rdx-site/README.md`) |
+| `public/site/` | The public RDx promo pages (static files, same website; see `docs/promo-site/README.md`) |
+| `lib/site/`, `app/api/` | The promo's announcements API (Cloudinary) |

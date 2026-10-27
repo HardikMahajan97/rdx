@@ -2,6 +2,8 @@ import { COMMUNITY, KIND_LABELS, SESSIONS, SITE, TEAM } from './config.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const PAGE = 9;
+const SPRITE = '/site/assets/img/sprite.svg';
+const has = (sel) => !!document.querySelector(sel);
 
 /** Small DOM builder. Text is always set as text, never parsed as HTML. */
 function h(tag, attrs = {}, ...children) {
@@ -24,6 +26,7 @@ const initials = (name) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('
 
 /** About: a row of mini courts per batch, with that batch's courts lit. */
 function renderAbout() {
+  if (!has('#batches')) return;
   $('#stat-members').textContent = COMMUNITY.members;
   $('#stat-members-2').textContent = COMMUNITY.members;
   const venue = $('#about-venue');
@@ -52,10 +55,10 @@ function renderAbout() {
 }
 
 function renderBasics() {
-  $('#slots').append(...SESSIONS.map((s) =>
+  if (has('#slots')) $('#slots').append(...SESSIONS.map((s) =>
     h('li', {}, h('b', {}, s.start), h('span', {}, s.name, h('span', { class: 'till' }, ` · till ${s.end}`)))));
 
-  $('#team-list').append(...TEAM.map((p, i) =>
+  if (has('#team-list')) $('#team-list').append(...TEAM.map((p, i) =>
     h('li', { class: i === 0 ? 'lead' : '' },
       h('span', { class: 'av', 'aria-hidden': 'true' }, initials(p.name)),
       h('div', { class: 'who' },
@@ -66,10 +69,7 @@ function renderBasics() {
         h('a', { class: 'btn btn-sm btn-wa', href: wa(p.phone, SITE.joinMessage), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
         h('a', { class: 'btn btn-sm btn-ghost', href: `tel:+91${p.phone}` }, 'Call')))));
 
-  $('#chain-times').textContent = SESSIONS.map((x) => x.start).join(' or ');
-  $('#join-whatsapp').href = wa(TEAM[0].phone, SITE.joinMessage);
-  $('#join-whatsapp').target = '_blank';
-  if (SITE.appUrl) Object.assign($('#open-app'), { href: SITE.appUrl, hidden: false });
+  if (has('#chain-times')) $('#chain-times').textContent = SESSIONS.map((x) => x.start).join(' or ');
   if (SITE.venue) {
     const v = $('#venue');
     v.append(SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue);
@@ -160,7 +160,7 @@ function postEl(p, i) {
 }
 
 function eventEl(p) {
-  return h('a', { class: 'event', href: `#post-${p.id}` },
+  return h('a', { class: 'event', href: `/news#post-${p.id}` },
     dateBubble(p.event.date),
     h('span', { class: 'event-info' },
       h('b', {}, p.title),
@@ -170,24 +170,28 @@ function eventEl(p) {
 let posts = [];
 let kind = 'all';
 let shown = PAGE;
+let jumped = false;
 
 function renderFeed() {
+  if (!has('#feed')) return;
   const feed = $('#feed');
   const list = posts.filter((p) => kind === 'all' || p.kind === kind);
   feed.replaceChildren();
   if (list.length === 0) {
     feed.append(h('div', { class: 'empty' },
       h('b', {}, kind === 'all' ? 'No announcements yet' : `No ${(KIND_LABELS[kind] ?? '').toLowerCase()} posts yet`),
-      h('span', {}, 'Tournaments, videos and news from RDx appear here. Follow the WhatsApp group for day-to-day updates.')));
+      h('span', {}, 'Tournaments, videos and news from RD’x appear here. Follow the WhatsApp group for day-to-day updates.')));
   }
   list.slice(0, shown).forEach((p, i) => { const el = postEl(p, i); el.id = `post-${p.id}`; feed.append(el); });
   $('#more').hidden = list.length <= shown;
+  if (!jumped && location.hash.startsWith('#post-')) { jumped = true; document.getElementById(location.hash.slice(1))?.scrollIntoView(); }
 }
 
 function renderUpcoming() {
   const now = today();
   const next = posts.filter((p) => p.kind === 'tournament' && p.event?.date && p.event.date >= now)
     .sort((a, b) => a.event.date.localeCompare(b.event.date)).slice(0, 3);
+  if (!has('#upcoming')) return;
   $('#upcoming').hidden = next.length === 0;
   $('#events').replaceChildren(...next.map(eventEl));
 }
@@ -205,7 +209,13 @@ async function loadPosts() {
   renderFeed();
 }
 
+/** Every join / log in button opens the sign-in screen of the booking app (same site; the server decides what `/` shows). */
+function wireAppLinks() {
+  document.querySelectorAll('[data-app]').forEach((a) => { a.href = SITE.appUrl; });
+}
+
 function wireFilters() {
+  if (!has('#filters')) return;
   const tabs = [...document.querySelectorAll('#filters button')];
   tabs.forEach((b) => b.addEventListener('click', () => {
     tabs.forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -235,7 +245,7 @@ function onScreen(el, cb, margin = '80px') {
 
 /** Hero: one rally across the court that's visible (upright on phones, sideways on wide screens). */
 function rally() {
-  if (still) return;
+  if (still || !has('.hero')) return;
   const svg = [...document.querySelectorAll('.hero .court')].find((x) => getComputedStyle(x).display !== 'none');
   const a = svg?.querySelector('.rally');
   if (!a) return;
@@ -251,6 +261,7 @@ const SHOTS = [
 ];
 
 function buildShots() {
+  if (!has('#shot-row')) return;
   const row = $('#shot-row');
   for (const shot of SHOTS) {
     const svg = s('svg', { viewBox: '0 0 300 170', class: 'shot-svg', 'aria-hidden': 'true' });
@@ -263,13 +274,13 @@ function buildShots() {
     );
     const nums = shot.d.slice(1).split(/[\sQ,]+/).map(Number);
     const [x0, y0] = nums;
-    const racquet = s('use', { href: '#i-racquet', x: x0 - 30, y: y0 - 12, width: 34, height: 34, class: 'shot-racquet' });
+    const racquet = s('use', { href: `${SPRITE}#i-racquet`, x: x0 - 30, y: y0 - 12, width: 34, height: 34, class: 'shot-racquet' });
     racquet.style.setProperty('--dur', `${shot.dur}s`);
     racquet.style.transformOrigin = `${x0 - 22}px ${y0 + 16}px`;
     const g = s('g');
     const motion = s('animateMotion', { dur: `${shot.dur}s`, repeatCount: 'indefinite', rotate: 'auto', path: shot.d,
       calcMode: 'spline', keyPoints: '0;1', keyTimes: '0;1', keySplines: shot.name === 'Smash' ? '.5 0 .9 .6' : '.3 .2 .6 1' });
-    const shuttle = s('use', { href: '#i-shuttle', x: -11, y: -11, width: 22, height: 22, transform: 'rotate(-90)' });
+    const shuttle = s('use', { href: `${SPRITE}#i-shuttle`, x: -11, y: -11, width: 22, height: 22, transform: 'rotate(-90)' });
     g.append(motion, shuttle);
     svg.append(racquet, g);
     const land = svg.querySelector('.land');
@@ -282,35 +293,42 @@ function buildShots() {
   }
 }
 
-/** Decision flowchart: opens up step by step the first time it's seen. */
-function flowchart() {
-  const flow = $('#flow');
-  if (still) return flow.classList.add('go');
-  const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { flow.classList.add('go'); io.disconnect(); } }, { threshold: 0.35 });
-  io.observe(flow);
+// ---------- Step-by-step pieces: the chain and the court guide ----------
+// They play once, on their own, the first time they come into view (no scroll tracking).
+
+/** Runs `draw(0..1)` over `ms` the first time `el` is seen; shows the finished state straight away for "reduce motion". */
+function playOnce(el, draw, ms) {
+  draw(0);
+  if (still) return draw(1);
+  const io = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return;
+    io.disconnect();
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms);
+      draw(k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); // ease in-out
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, { threshold: 0.4 });
+  io.observe(el);
 }
 
-// ---------- Scroll-driven pieces: the chain line and the court guide ----------
-
-const progress = (el, at = 0.62) => {
-  const r = el.getBoundingClientRect();
-  return Math.min(1, Math.max(0, (innerHeight * at - r.top) / r.height));
-};
-
 function chain() {
+  if (!has('#chain')) return;
   const list = $('#chain');
   const items = [...list.children];
-  return () => {
-    const p = still ? 1 : progress(list);
+  playOnce(list, (p) => {
     list.style.setProperty('--fill', p.toFixed(3));
     const top = list.getBoundingClientRect().top;
     const reach = top + p * list.offsetHeight;
     items.forEach((li) => li.classList.toggle('on', li.getBoundingClientRect().top + 22 <= reach + 1));
-  };
+  }, 2600);
 }
 
 /** The court guide: lines, the path through the four stations, and the shuttle that follows your scroll. */
 function guide() {
+  if (!has('#guide')) return;
   const box = $('#guide');
   const svg = $('.guide-svg', box);
   const path = $('.g-path', svg);
@@ -369,9 +387,8 @@ function guide() {
     });
   }
 
-  function update() {
+  function update(p) {
     if (!len) return;
-    const p = still ? 1 : progress(box, 0.55);
     const at = p * len;
     const pt = path.getPointAtLength(at);
     const ahead = path.getPointAtLength(Math.min(len, at + 2));
@@ -383,68 +400,42 @@ function guide() {
     box.classList.toggle('finished', p >= 0.999);
   }
 
+  let p = 0;
   layout();
-  new ResizeObserver(() => { layout(); update(); }).observe(box);
-  return update;
+  new ResizeObserver(() => { layout(); update(p); }).observe(box);
+  playOnce(box, (k) => { p = k; update(k); }, 3400);
 }
 
-function scrollEngine(parts) {
-  const active = new Set();
-  let queued = false;
-  const tick = () => { queued = false; active.forEach((f) => f()); };
-  const queue = () => { if (!queued && active.size) { queued = true; requestAnimationFrame(tick); } };
-  for (const [el, fn] of parts) {
-    onScreen(el, (on) => { on ? active.add(fn) : active.delete(fn); fn(); }, '200px');
-    fn();
-  }
-  addEventListener('scroll', queue, { passive: true });
-  addEventListener('resize', queue, { passive: true });
-}
-
-/** Phones: a WhatsApp bar slides up once the hero is gone, and hides again near the join buttons and team. */
+/** Phones: a join bar that hides while the page's own join buttons, the hero or the footer are on screen. */
 function dock() {
   const bar = $('#dock');
-  $('#dock-wa').href = wa(TEAM[0].phone, SITE.joinMessage);
-  $('#dock-wa').target = '_blank';
+  const hide = [...document.querySelectorAll('[data-hide-dock]')];
   const seen = new Map();
   const set = () => {
-    const show = !seen.get('hero') && !seen.get('cta') && !seen.get('team') && !seen.get('foot');
+    const show = ![...seen.values()].some(Boolean);
     bar.classList.toggle('show', show);
     bar.setAttribute('aria-hidden', String(!show));
     bar.querySelectorAll('a').forEach((a) => a.tabIndex = show ? 0 : -1);
   };
-  for (const [k, el] of [['hero', $('.hero')], ['cta', $('#guide-cta')], ['team', $('#team')], ['foot', $('.foot')]]) {
-    new IntersectionObserver(([e]) => { seen.set(k, e.isIntersecting); set(); }).observe(el);
-  }
+  hide.forEach((el) => new IntersectionObserver(([e]) => { seen.set(el, e.isIntersecting); set(); }).observe(el));
+  set();
 }
 
-/** Highlights the header link of the section you're reading, and keeps it in view in the phone's link row. */
-function navSpy() {
+/** Keeps the current page's link in view in the phone's link row. */
+function navScroll() {
   const nav = $('#nav');
-  const links = [...nav.querySelectorAll('a')];
-  const sections = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
-  const seen = new Map();
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((e) => seen.set(e.target, e.isIntersecting));
-    const current = sections.find((s) => seen.get(s));
-    links.forEach((a) => {
-      const on = !!current && a.getAttribute('href') === `#${current.id}`;
-      if (on && a.getAttribute('aria-current') !== 'true' && nav.scrollWidth > nav.clientWidth) {
-        nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: still ? 'auto' : 'smooth' });
-      }
-      on ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current');
-    });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  sections.forEach((s) => io.observe(s));
+  const a = nav.querySelector('[aria-current]');
+  if (a && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2;
 }
 
+wireAppLinks();
 renderBasics();
 renderAbout();
-navSpy();
+navScroll();
 wireFilters();
 buildShots();
-flowchart();
-scrollEngine([[$('#chain'), chain()], [$('#guide'), guide()]]);
+chain();
+guide();
 dock();
 rally();
 loadPosts();

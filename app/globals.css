@@ -94,8 +94,12 @@ p { margin: 5px 0; }
   background: rgba(5, 5, 6, 0.82);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .top a { color: var(--text); font-family: var(--display); font-stretch: 118%; font-weight: 650; font-size: 1.12rem; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.top .home-link { min-height: 44px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 99px; font-size: 1rem; font-stretch: 100%; font-weight: 500; gap: 7px; color: var(--muted); }
+.top .home-link svg { width: 20px; height: 20px; }
+.top .home-link:active { color: var(--text); }
 .top .logo { width: 28px; height: 28px; padding: 4px; border-radius: 8px; background: var(--red); }
 @media (min-width: 960px) { .top { padding: 14px 32px; } }
 
@@ -241,14 +245,15 @@ a.tile:hover { text-decoration: none; border-color: var(--line-3); }
 label, .grid2 > *, .stack > *, .step-box, details > div { min-width: 0; }
 label { display: grid; gap: 6px; font-size: .95rem; color: var(--muted); }
 label > span { color: var(--faint); }
-input, select {
+input, select, textarea {
   font: inherit; font-size: 17px; /* ≥16px stops iOS zooming into fields */
   color: var(--text); background: var(--graphite); border: 1px solid var(--line);
   border-radius: var(--r); padding: 12px 14px; width: 100%; min-width: 0; max-width: 100%; min-height: 50px;
   transition: border-color .15s, background .15s;
 }
-input::placeholder { color: var(--faint); }
-input:focus, select:focus { outline: none; border-color: var(--line-3); background: var(--graphite-2); }
+textarea { resize: vertical; line-height: 1.5; }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--line-3); background: var(--graphite-2); }
 button:focus-visible, .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 input[type='checkbox'] { width: 20px; min-height: 20px; accent-color: var(--red); }
 input[type='date'] { color-scheme: dark; -webkit-appearance: none; appearance: none; display: block; }

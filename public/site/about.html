@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>About RD’x | RD’x Badminton Community</title>
+  <meta name="description" content="About RD’x: our courts, our batches at Aliens Badminton Academy, and the people who run the community.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:title" content="About RD’x | RD’x Badminton Community">
+  <meta property="og:description" content="About RD’x: our courts, our batches at Aliens Badminton Academy, and the people who run the community.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/site/assets/img/og.png">
+  <link rel="icon" href="/site/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="module" src="/site/assets/js/site.js"></script>
+</head>
+<body data-page="about">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="/?home" aria-label="RD’x home"><svg class="brand-icon" aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-shuttle" /></svg><span class="mark">RD<i>’x</i></span></a>
+    <nav aria-label="Pages" id="nav"><a href="/about" aria-current="page">About</a><a href="/play">Play</a><a href="/membership">Membership</a><a href="/news">News</a><a href="/join">Register</a></nav>
+    <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
+    <a class="btn btn-red btn-sm" data-app href="/?app=1">Join</a>
+  </header>
+
+  <main id="main">
+    <header class="page-head">
+      <h1>About RD’x</h1>
+      <p class="page-intro">A badminton community that plays every morning and evening.</p>
+    </header>
+
+    <section class="section about" aria-labelledby="about-title">
+      <div class="about-head">
+        <p class="big-stat"><b id="stat-members">300+</b><span>members</span></p>
+        <div>
+          <h2 id="about-title">Who we are</h2>
+          <p class="venue-line"><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-pin" /></svg><span id="about-venue"></span></p>
+        </div>
+      </div>
+      <p class="about-text">RD’x is a badminton community of <span id="stat-members-2">300+</span> players. We play every morning and evening on Aliens Badminton Academy's courts, members and drop-in players together, and rotate so everyone gets games.</p>
+
+      <div class="batches" id="batches"></div>
+
+      <h3 class="sub">How a session goes</h3>
+      <ol class="mini-chain">
+        <li><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-vote" /></svg><span>Vote for your batch in the app</span></li>
+        <li><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-pin" /></svg><span>Come to the academy</span></li>
+        <li><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-racquet" /></svg><span>Play on your batch's courts</span></li>
+        <li><svg aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-rotate" /></svg><span>Rotate so everyone gets games</span></li>
+      </ol>
+    </section>
+
+    <section class="section" id="team" aria-labelledby="team-title">
+      <h2 id="team-title">The people who run it</h2>
+      <p class="page-intro" style="margin-bottom:16px">Questions before you join? Call or message any of us.</p>
+      <ol class="team" id="team-list"></ol>
+    </section>
+    <section class="section cta-band" aria-label="Join RD’x">
+      <div class="band">
+        <div><b>Ready to play?</b><span>Register in a minute, or log in if you already have an account.</span></div>
+        <div class="cta"><a class="btn btn-red" data-app href="/?app=1">Join RD’x</a><a class="btn btn-ghost" data-app href="/?app=1">Log in</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot" data-hide-dock>
+    <span class="mark">RD<i>’x</i></span>
+    <nav class="foot-links" aria-label="Footer"><a href="/about">About</a><a href="/play">How to play</a><a href="/membership">Being a member</a><a href="/news">News</a><a href="/join">Register</a><a data-app href="/?app=1">Join</a></nav>
+    <span class="muted" id="venue"></span>
+    <span class="muted">© <span id="year"></span> RD’x Badminton Community</span>
+  </footer>
+
+  <!-- Phones: a join bar that stays out of the way of the page's own join buttons -->
+  <div class="dock" id="dock" aria-hidden="true">
+    <a class="btn btn-red" data-app tabindex="-1" href="/?app=1">Join RD’x</a>
+  </div>
+</body>
+</html>

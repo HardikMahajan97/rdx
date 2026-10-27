@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Join RD’x | RD’x Badminton Community</title>
+  <meta name="description" content="Register for RD’x: sign up, get approved, set a PIN, then vote for your session.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:title" content="Join RD’x | RD’x Badminton Community">
+  <meta property="og:description" content="Register for RD’x: sign up, get approved, set a PIN, then vote for your session.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/site/assets/img/og.png">
+  <link rel="icon" href="/site/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="module" src="/site/assets/js/site.js"></script>
+</head>
+<body data-page="join">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="/?home" aria-label="RD’x home"><svg class="brand-icon" aria-hidden="true"><use href="/site/assets/img/sprite.svg#i-shuttle" /></svg><span class="mark">RD<i>’x</i></span></a>
+    <nav aria-label="Pages" id="nav"><a href="/about">About</a><a href="/play">Play</a><a href="/membership">Membership</a><a href="/news">News</a><a href="/join" aria-current="page">Register</a></nav>
+    <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
+    <a class="btn btn-red btn-sm" data-app href="/?app=1">Join</a>
+  </header>
+
+  <main id="main">
+    <header class="page-head">
+      <h1>Join RD’x</h1>
+      <p class="page-intro">Register once, get approved, and you are ready to vote for your first session.</p>
+    </header>
+
+    <section class="section guide-wrap" aria-labelledby="join-title">
+      <h2 id="join-title">Your way onto the court</h2>
+      <div class="guide" id="guide">
+        <svg class="guide-svg" aria-hidden="true">
+          <g class="g-lines"></g>
+          <path class="g-path" />
+          <path class="g-done" />
+          <g class="g-shuttle"><use href="/site/assets/img/sprite.svg#i-shuttle" x="-17" y="-17" width="34" height="34" /></g>
+        </svg>
+        <ol class="stations">
+          <li class="st left"><span class="st-n">1</span><span class="st-text"><b>Register</b><span>name, mobile number and a few details</span></span></li>
+          <li class="st right"><span class="st-n">2</span><span class="st-text"><b>Get approved</b><span>the RD’x admin and core team check it</span></span></li>
+          <li class="st left"><span class="st-n">3</span><span class="st-text"><b>Sign in</b><span>your number + a 4-digit PIN</span></span></li>
+          <li class="st right"><span class="st-n">4</span><span class="st-text"><b>Vote and play</b><span>pick, confirm, smash</span></span></li>
+        </ol>
+        <span class="net-tag" aria-hidden="true">net</span>
+      </div>
+      <div class="cta guide-cta" data-hide-dock>
+        <a class="btn btn-red" data-app href="/?app=1">Register now</a>
+        <a class="btn btn-ghost" data-app href="/?app=1">I have an account</a>
+      </div>
+      <p class="muted help">Need a hand? <a href="/about#team">Call or message the team</a>.</p>
+    </section>
+  </main>
+
+  <footer class="foot" data-hide-dock>
+    <span class="mark">RD<i>’x</i></span>
+    <nav class="foot-links" aria-label="Footer"><a href="/about">About</a><a href="/play">How to play</a><a href="/membership">Being a member</a><a href="/news">News</a><a href="/join">Register</a><a data-app href="/?app=1">Join</a></nav>
+    <span class="muted" id="venue"></span>
+    <span class="muted">© <span id="year"></span> RD’x Badminton Community</span>
+  </footer>
+
+  <!-- Phones: a join bar that stays out of the way of the page's own join buttons -->
+  <div class="dock" id="dock" aria-hidden="true">
+    <a class="btn btn-red" data-app tabindex="-1" href="/?app=1">Join RD’x</a>
+  </div>
+</body>
+</html>
