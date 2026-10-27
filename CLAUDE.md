@@ -6,7 +6,7 @@ This file holds the intent and the decisions made so far, so future work doesn't
 
 ## What this is and who it's for
 
-- Slot booking for **RDx**, a badminton community of 300+ players at Aliens Badminton Academy. Community head: Rahul Dhekane (RDx). Core members: Sadanand Wagh, Pranit Devre, Jaideep Bisen.
+- Slot booking for **RDx**, a badminton community of 300+ players. Community head: Rahul Dhekane (RDx). Core members: Sadanand Wagh, Pranit Devre, Jaideep Bisen.
 - It replaces the daily WhatsApp poll. One pinned link: players vote for the morning or evening batch, members use plan sessions, and staff see who's coming and who owes money.
 - **Used almost only on phones.** Verify every UI change at 360–390 px wide (also 320 and phone landscape). Keep effects light.
 - Three languages: English, Marathi, Hindi. Each person's choice is saved on their account.
@@ -83,7 +83,7 @@ This file holds the intent and the decisions made so far, so future work doesn't
 - **Every balance change is written to `plan_ledger`** (`activate`, `topup`, `use`, `refund`, `adjust`) and shown as each member's history.
 - Friends (guests) always pay the fee.
 - **Batch prices are per hour** (admin → batches, "Fee per hour"); a seat costs that × the session length (`seatFee`). Batches are 60 minutes today, so the price per session is the same.
-- Admin batch settings: courts, players per court, fee per hour.
+- Admin batch settings: the exact **court numbers** (e.g. morning `1, 2`, evening `4, 5, 6`), players per court, fee per hour. `batches.court_numbers` / `sessions.court_numbers` hold them; `courts` is just their count. A new session copies its batch's courts. On the roster, staff **add a court by entering its number** (`addCourt`) or remove one (`removeCourt`); each adds or removes one court's seats. Players see the court numbers on each session card and on the court board.
 
 ## Design decisions (the owner's taste; don't regress)
 

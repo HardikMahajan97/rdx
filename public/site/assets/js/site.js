@@ -24,40 +24,28 @@ const initials = (name) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('
 
 // ---------- Static parts from config ----------
 
-/** About: a row of mini courts per batch, with that batch's courts lit. */
+const courtsText = (c) => (c.length === 1 ? `Court ${c[0]}` : `Courts ${c.slice(0, -1).join(', ')} and ${c.at(-1)}`);
+
+/** Members count and the plain-text timings: each batch with its hours and exact court numbers. */
 function renderAbout() {
-  if (!has('#batches')) return;
-  $('#stat-members').textContent = COMMUNITY.members;
-  $('#stat-members-2').textContent = COMMUNITY.members;
-  const venue = $('#about-venue');
-  venue.append(SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue);
-  if (!SITE.venue) venue.parentElement.hidden = true;
-  const courts = Array.from({ length: COMMUNITY.totalCourts }, (_, i) => i + 1);
-  $('#batches').append(...SESSIONS.map((b) => {
-    const label = b.courts.length === 1 ? `Court ${b.courts[0]}` : `Courts ${b.courts.slice(0, -1).join(', ')} and ${b.courts.at(-1)}`;
-    let n = 0;
-    return h('article', { class: 'batch' },
-      h('div', { class: 'batch-head' },
-        h('b', {}, b.name),
-        h('span', { class: 'batch-time' }, `${b.start} to ${b.end}`)),
-      h('ol', { class: 'courts', 'aria-label': label },
-        courts.map((c) => {
-          const on = b.courts.includes(c);
-          const li = h('li', { class: on ? 'on' : '', 'aria-hidden': 'true' }, h('span', {}, String(c)));
-          if (on) li.style.setProperty('--i', String(n++));
-          return li;
-        })),
-      h('p', { class: 'batch-courts' }, label));
-  }));
-  const box = $('#batches');
-  if (still) box.classList.add('lit');
-  else new IntersectionObserver(([e], io) => { if (e.isIntersecting) { box.classList.add('lit'); io.disconnect(); } }, { threshold: 0.4 }).observe(box);
+  for (const id of ['#stat-members', '#stat-members-2']) if (has(id)) $(id).textContent = COMMUNITY.members;
+  if (!has('#sessions-text')) return;
+  // The venue, with its Google Maps link, just above the timings.
+  if (SITE.venue) {
+    const pin = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    pin.setAttribute('aria-hidden', 'true');
+    pin.innerHTML = `<use href="${SPRITE}#i-pin"/>`;
+    $('#sessions-text').before(h('p', { class: 'venue-line' }, pin, h('span', { class: 'venue-label' }, 'Venue:'),
+      SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue));
+  }
+  $('#sessions-text').append(...SESSIONS.map((b) =>
+    h('li', {},
+      h('b', {}, b.name),
+      h('span', { class: 'when' }, `${b.start} to ${b.end}`),
+      h('span', { class: 'where' }, courtsText(b.courts)))));
 }
 
 function renderBasics() {
-  if (has('#slots')) $('#slots').append(...SESSIONS.map((s) =>
-    h('li', {}, h('b', {}, s.start), h('span', {}, s.name, h('span', { class: 'till' }, ` · till ${s.end}`)))));
-
   if (has('#team-list')) $('#team-list').append(...TEAM.map((p, i) =>
     h('li', { class: i === 0 ? 'lead' : '' },
       h('span', { class: 'av', 'aria-hidden': 'true' }, initials(p.name)),
@@ -70,11 +58,6 @@ function renderBasics() {
         h('a', { class: 'btn btn-sm btn-ghost', href: `tel:+91${p.phone}` }, 'Call')))));
 
   if (has('#chain-times')) $('#chain-times').textContent = SESSIONS.map((x) => x.start).join(' or ');
-  if (SITE.venue) {
-    const v = $('#venue');
-    v.append(SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue);
-  }
-  $('#year').textContent = new Date().getFullYear();
 }
 
 // ---------- Media ----------
@@ -180,7 +163,7 @@ function renderFeed() {
   if (list.length === 0) {
     feed.append(h('div', { class: 'empty' },
       h('b', {}, kind === 'all' ? 'No announcements yet' : `No ${(KIND_LABELS[kind] ?? '').toLowerCase()} posts yet`),
-      h('span', {}, 'Tournaments, videos and news from RD’x appear here. Follow the WhatsApp group for day-to-day updates.')));
+      h('span', {}, 'Tournaments, videos and news from RDx appear here. Follow the WhatsApp group for day-to-day updates.')));
   }
   list.slice(0, shown).forEach((p, i) => { const el = postEl(p, i); el.id = `post-${p.id}`; feed.append(el); });
   $('#more').hidden = list.length <= shown;
@@ -241,15 +224,6 @@ const s = (tag, attrs = {}) => { const el = document.createElementNS(SVG, tag); 
 /** Calls back with true/false as an element enters/leaves the screen. */
 function onScreen(el, cb, margin = '80px') {
   new IntersectionObserver((entries) => entries.forEach((e) => cb(e.isIntersecting)), { rootMargin: margin }).observe(el);
-}
-
-/** Hero: one rally across the court that's visible (upright on phones, sideways on wide screens). */
-function rally() {
-  if (still || !has('.hero')) return;
-  const svg = [...document.querySelectorAll('.hero .court')].find((x) => getComputedStyle(x).display !== 'none');
-  const a = svg?.querySelector('.rally');
-  if (!a) return;
-  setTimeout(() => { a.parentElement.classList.remove('hide'); a.beginElement(); }, 350);
 }
 
 // Side view: player on the left, net at x = 150, floor at y = 150.
@@ -428,6 +402,39 @@ function navScroll() {
   if (a && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2;
 }
 
+/** First visit only: the RDx BADDY GROUP sting (about 5 s, with sound) plays once over the page, then the site shows. */
+function intro() {
+  const root = document.documentElement;
+  if (!root.classList.contains('intro')) return;
+  const seen = () => { try { localStorage.setItem('rdx-intro', '1'); } catch { /* fine */ } };
+  const layer = h('div', { class: 'intro-layer', role: 'dialog', 'aria-label': 'RDx BADDY GROUP intro' });
+  // The video file is only requested from here, so nobody who has already seen it ever downloads it.
+  const video = h('video', { playsinline: true, preload: 'auto', poster: '/site/assets/video/intro-poster.jpg', 'aria-hidden': 'true' });
+  layer.append(video);
+  document.body.append(layer);
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    seen();
+    video.pause();
+    layer.classList.add('out');
+    setTimeout(() => { layer.remove(); root.classList.remove('intro'); video.removeAttribute('src'); video.load(); }, 600);
+  };
+  video.addEventListener('ended', () => setTimeout(finish, 350)); // let the re-formed logo hold for a moment
+  video.addEventListener('error', finish);
+  video.src = '/site/assets/video/intro.mp4';
+  // Just play, with sound. Browsers often refuse sound before any tap; then it plays silently instead of asking,
+  // and the sound comes on if the visitor taps the screen.
+  video.play().then(seen).catch(() => {
+    video.muted = true;
+    layer.addEventListener('pointerdown', () => { video.muted = false; }, { once: true });
+    video.play().then(seen).catch(finish);
+  });
+  setTimeout(finish, 14000);
+}
+
+intro();
 wireAppLinks();
 renderBasics();
 renderAbout();
@@ -437,5 +444,4 @@ buildShots();
 chain();
 guide();
 dock();
-rally();
 loadPosts();

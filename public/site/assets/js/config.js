@@ -1,14 +1,14 @@
 // Everything on the site that someone might want to change, in one place.
 
 export const SITE = {
-  name: 'RD’x',
+  name: 'RDx',
   tagline: 'Badminton every morning and evening.',
   // Where every Join / Register / Log in button goes: the booking app's sign-in screen (same website).
   appUrl: '/?app=1',
   // Where you play. Leave empty to hide it. mapUrl: a Google Maps link to it (optional).
   venue: 'Aliens Badminton Academy',
-  mapUrl: '',
-  joinMessage: "Hi! I'd like to join RD’x badminton. My name is ",
+  mapUrl: 'https://maps.app.goo.gl/nebRK6iLGiv4KU559',
+  joinMessage: "Hi! I'd like to join RDx badminton. My name is ",
 };
 
 export const COMMUNITY = {
@@ -25,7 +25,7 @@ export const SESSIONS = [
 
 // Phone numbers as 10 digits (Indian mobile). Displayed as +91 xxxxx xxxxx.
 export const TEAM = [
-  { name: 'Rahul Dhekane', alias: 'RD’x', role: 'Community head', phone: '8898117019' },
+  { name: 'Rahul Dhekane', alias: 'RDx', role: 'Community head', phone: '8898117019' },
   { name: 'Sadanand Wagh', role: 'Core member', phone: '8793103747' },
   { name: 'Pranit Devre', role: 'Core member', phone: '9766990861' },
   { name: 'Jaideep Bisen', role: 'Core member', phone: '9325735543' },

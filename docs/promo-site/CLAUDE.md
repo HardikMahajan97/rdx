@@ -18,11 +18,11 @@ The public promo website for the RDx badminton community. It is **part of the bo
 
 All of these live in `assets/js/config.js`:
 
-- Name **RD’x**: R and D uppercase, an apostrophe, then x lowercase; the apostrophe and x are red. Always written with the apostrophe in visible text.
+- Name **RDx**: R and D uppercase, x lowercase in red. **No apostrophe** (the owner tried "RD'x", then asked for it to be removed everywhere). The group is "RDx BADDY GROUP".
 - **300+ members**.
-- Venue: **Aliens Badminton Academy**. `mapUrl` is empty until the owner gives a Google Maps link.
+- Venue: **Aliens Badminton Academy**, shown once, as a line with a pin and a Google Maps link (`SITE.mapUrl`, https://maps.app.goo.gl/nebRK6iLGiv4KU559) just above "Timings and courts" on Home and About. The owner first had it removed everywhere, then asked for it back in that one place only; don't add it to the footer or descriptions.
 - **Batches:**
-  - Morning: courts **1 and 2**.
+  - Morning: courts **1 and 2** (`SESSIONS` in `config.js`; keep it in step with Admin → Batches → Court numbers).
   - Evening: courts **4, 5 and 6**. (The owner corrected these; they were the other way round before.)
   - The academy has 6 courts.
   - The 7–8 AM / 7–8 PM times came from the booking app's default batches, not from the owner. Confirm them if asked.
@@ -36,14 +36,16 @@ All of these live in `assets/js/config.js`:
 
 ## Pages (multi-page, no build step; shared header/footer are repeated in each HTML file)
 
-- `/` Home: hero (wordmark on a court, one rally), session times, "Coming up", links to the other pages, join band.
-- `/about`: members, venue, court map per batch, "How a session goes", the team (`#team`, call and WhatsApp).
+- `/` Home: no big wordmark any more. It opens straight with the headline and Join button, then who we are (300+ members), timings and courts, "Coming up", links to the other pages and the join band.
+- **First-visit intro video:** `public/site/assets/video/intro.mp4` (+ `intro-poster.jpg`), the 5-second RDx BADDY GROUP logo sting (shuttle hits the logo, explosion, logo re-forms; has sound). It plays once over the home page for a first-time visitor: an inline script in `index.html` marks `html.intro` when `localStorage.rdx-intro` is unset, the browser can store data, motion isn't reduced and the URL has no `?home`; `intro()` in `site.js` then creates the video (the file is requested only then). There are no buttons (the owner asked for no "Tap to play" or "Skip"): it just plays. Browsers often block sound before any tap, so then it plays silently and the sound comes on if the visitor taps the screen. It sets `rdx-intro` and never plays again on that phone. The original is `source-assets/intro-original.mp4` (committed, never served). `bash scripts/make-intro-assets.sh [original.mp4]` rebuilds the served video, the poster and every logo image from it. The served copy is cropped (white frame removed) and re-encoded from the original at 768 px with a light sharpen (~1.2 MB; the source itself is only 576 px). While the explosion plays (1.2 s to 3.8 s) the edges are faded to black with an ffmpeg `blend` mask, because the smoke otherwise fills the square and shows as a visible box on the black screen; the logo frames at the start and end are not touched. If you swap in a new original, redo that fade.
+- `/about`: members, timings and courts as plain text (hours and courts both underlined, no boxes or highlight), "How a session goes", the team (`#team`, call and WhatsApp).
 - `/play`: the four shots, and "A slot, start to finish" (chain).
 - `/membership`: fixed and wallet plans, and "Who pays what" as a plain four-step chain (vote, are you a member?, not a member?, bringing friends?). The owner found the decision flowchart too technical; keep the wording in everyday terms.
 - `/news`: "Coming up" and announcements (filters, photo viewer).
 - `/join` (nav label "Register"): the four-step court guide, with Register / I have an account buttons.
 - Icons come from `assets/img/sprite.svg` (`<use href="/assets/img/sprite.svg#i-shuttle">`). The shuttle artwork lives there now.
-- Header: logo, page links (a second swipeable row on phones; `aria-current="page"` is set in each file) and a Join button. The footer repeats the page links.
+- Header: logo, page links (a second swipeable row on phones; `aria-current="page"` is set in each file) and a Join button. The footer has the page links, then the copyright line at the very end: "Copyright © 2027 RDx BADDY GROUP" (fixed text, owner's wording). Above it, a credit line: "Hardik Mahajan · Developer & Technical Team".
+- **Logo:** the RDx BADDY GRP logo (a frame of the intro video, on black) is now the header logo (`logo.png`), favicon, home-screen icons (`icon-192/512.png`, `apple-touch-icon.png`), sharing image (`og.png`) and the app's top-bar logo and tab icon. All are made by `scripts/make-intro-assets.sh` from frame 0 of the original, cropped 32 px in. The logo has a solid black background, so it is shown as a rounded square, not cut out.
 - **Every Join / Register / Log in button goes to the booking app** (`SITE.appUrl` = `/?app=1`, marked `data-app`). WhatsApp is no longer the join route; the team's numbers stay on `/about`.
 - **One site, decided on the server.** `proxy.ts` shows the promo home at `/` unless the visitor has a `pid` (signed in) or `claim` cookie, or a short-lived `rdx-app` cookie (set by `/?app=1`, 30 min), or `?app` / `?msg` is in the URL. Join / Register / Log in buttons (`data-app`, `SITE.appUrl`) go to `/?app=1`, the app's sign-in screen. Signed-in players never see the promo at `/`.
 - There is **one admin page, `/admin`** (the app's). Announcements are managed in its "Announcements" section (`app/ui/PostsAdmin.tsx`, English-only labels). `/site-admin` just redirects there. `/robots.txt` allows only `/` and the promo pages.
@@ -54,7 +56,7 @@ All of these live in `assets/js/config.js`:
 
 - **Same palette as the booking app:** near-black (`#050506`, `#0c0c0e`, `#16161a`), beige text `#efe6d2`, red `#e5484d` / `#a61f28`. Blue, yellow and green glass only on dates, chips, the decision diamond and WhatsApp.
 - **Fonts:** Anek Devanagari (wide display face, `font-stretch` up to 125%) and Mukta. Body text is 17 px.
-- **The shuttle is a Yonex Mavis 350, as the owner asked** (the `#i-shuttle` symbol in `assets/img/sprite.svg`, plus `assets/img/favicon.svg`):
+- **The shuttle is a Yonex Mavis 350, as the owner asked** (the `#i-shuttle` symbol in `assets/img/sprite.svg`, and the shuttle still used in the court guide and shot animations):
   - a bright lemon-yellow nylon skirt with a see-through diamond mesh in the top half and a ribbed lower skirt;
   - a very slim green speed band;
   - a white cork.

@@ -1,12 +1,12 @@
 {
-  "name": "RD’x Badminton Community",
-  "short_name": "RD’x",
+  "name": "RDx Baddy Group",
+  "short_name": "RDx Baddy",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050506",
   "theme_color": "#050506",
   "icons": [
-    { "src": "/site/site/assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "/site/site/assets/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+    { "src": "/site/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/site/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
