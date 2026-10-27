@@ -24,12 +24,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <header className="top">
           <Link href="/">
-            <svg className="logo" viewBox="0 0 24 24" aria-hidden>
-              <path d="M8.5 13.5 4 4.5h8l-1 9" fill="rgba(239,230,210,.95)" />
-              <path d="M10.5 13.5 13 4.5h7l-5.5 9" fill="rgba(239,230,210,.7)" />
-              <circle cx="11.6" cy="17" r="4" fill="#0f0f11" stroke="rgba(239,230,210,.95)" strokeWidth="1.4" />
-            </svg>
-            {name}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="logo" src="/site/assets/img/logo.png" width={32} height={32} alt="" />
+            <span className="brand-text">RDx Baddy Group</span>
           </Link>
           {/* Plain link on purpose: `/?home` is answered by the proxy with the promo pages, not by the app router. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}

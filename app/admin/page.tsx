@@ -178,7 +178,7 @@ function BatchForm({ t, batch }: { t: T; batch: Batch }) {
       <input type="hidden" name="id" value={batch.id} />
       <h2>{batchName(t, batch)} · {fmtTime(istInstant(istDate(), batch.start_time))}</h2>
       <div className="grid2">
-        <label>{t('courts')}<input name="courts" type="number" min="0" defaultValue={batch.courts} /></label>
+        <label>{t('courtNumbers')}<input name="courtNumbers" inputMode="numeric" placeholder="1, 2" defaultValue={(batch.court_numbers.length ? batch.court_numbers : Array.from({ length: batch.courts }, (_, i) => i + 1)).join(', ')} required /></label>
         <label>{t('perCourt')}<input name="playersPerCourt" type="number" min="1" defaultValue={batch.players_per_court} /></label>
         <label>{t('price')}<input name="price" type="number" min="0" defaultValue={batch.price_rupees} /></label>
       </div>

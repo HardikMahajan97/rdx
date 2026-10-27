@@ -50,6 +50,7 @@ export type Batch = {
   start_time: string; // 'HH:MM:SS' IST
   duration_min: number;
   courts: number;
+  court_numbers: number[];
   players_per_court: number;
   price_rupees: number;
 };
@@ -60,6 +61,7 @@ export type Session = {
   date: string;
   starts_at: Date;
   capacity: number;
+  court_numbers: number[];
   locked: boolean;
   closed: boolean;
   cancelled: boolean;

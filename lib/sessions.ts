@@ -69,8 +69,8 @@ async function upcomingSession(batch: Batch): Promise<Session> {
     const startsAt = istInstant(date, batch.start_time);
     if (startsAt.getTime() + batch.duration_min * 60_000 <= Date.now()) continue;
     const [session] = await sql<Session[]>`
-      insert into sessions (batch_id, date, starts_at, capacity)
-      values (${batch.id}, ${date}, ${startsAt}, ${batch.courts * batch.players_per_court})
+      insert into sessions (batch_id, date, starts_at, capacity, court_numbers)
+      values (${batch.id}, ${date}, ${startsAt}, ${(batch.court_numbers.length || batch.courts) * batch.players_per_court}, ${batch.court_numbers})
       on conflict (batch_id, date) do update set batch_id = excluded.batch_id
       returning *`;
     return session;

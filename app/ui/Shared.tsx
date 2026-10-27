@@ -101,6 +101,9 @@ export function SlotHead({ t, lang, batch, session, children }: {
           {phase === 'cancelled' && <span className="pill bad">{t('cancelled')}</span>}
         </div>
         <div className="slot-time">{fmtTime(start)} <span className="dash">–</span> {fmtTime(end)}</div>
+        {session.court_numbers.length > 0 && (
+          <div className="slot-courts">{t(session.court_numbers.length === 1 ? 'court' : 'courtsLabel')} {session.court_numbers.join(', ')}</div>
+        )}
         {children}
       </div>
     </div>

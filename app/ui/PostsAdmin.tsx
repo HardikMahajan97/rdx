@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Submit } from './Client';
 
-// Announcements for the public RD’x pages. Admin only: the API checks the admin sign-in, the same one as the rest of this page.
+// Announcements for the public RDx pages. Admin only: the API checks the admin sign-in, the same one as the rest of this page.
 // Photos and videos go straight from the browser to Cloudinary (a signature comes from /api/sign).
 
 type Media = { type: 'image' | 'video' | 'youtube'; url: string; publicId?: string; width?: number; height?: number; duration?: number };
@@ -107,7 +107,7 @@ export function PostsAdmin() {
 
   return (
     <>
-      <h3>Announcements <span className="muted">(public RD’x website)</span></h3>
+      <h3>Announcements <span className="muted">(public RDx website)</span></h3>
       {note && <div className={`status ${note.bad ? 'bad' : 'ok'}`} role="status">{note.text}</div>}
       <div className="cols">
         <details className="card">

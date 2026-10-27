@@ -7,7 +7,7 @@ import { planLeft } from '@/lib/members';
 import { snapshot } from '@/lib/snapshot';
 import { getBatch, getSession, staffStatuses, timing, upcomingSessions } from '@/lib/sessions';
 import { fmtDate, fmtTime, istDate } from '@/lib/time';
-import { cancelSession, changeCourts, setBookingStatus, togglePaid } from '../staff-actions';
+import { addCourt, cancelSession, removeCourt, setBookingStatus, togglePaid } from '../staff-actions';
 import { AutoRefresh, Submit } from '../ui/Client';
 import { CourtBoard } from '../ui/CourtBoard';
 import { initials, Msg, Skeleton, SlotHead, Tile, Toolbar } from '../ui/Shared';
@@ -141,12 +141,18 @@ async function RosterContent({ searchParams }: Props) {
 
         <div>
           <section className="card">
-            <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} showNames
+            <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} numbers={session.court_numbers} showNames
               people={snap.active.map((r) => ({ name: r.name, kind: r.covered ? 'member' : 'floater', guests: r.guests, here: r.status === 'present' }))}
               labels={{ court: t('court'), member: t('legendMember'), floater: t('legendFloater'), friend: t('legendFriend'), open: t('openSpot'), extra: t('overCap') }} />
-            <div className="row" style={{ marginTop: 14 }}>
-              <form action={changeCourts}>{hidden()}<input type="hidden" name="from" value={snap.capacity} /><input type="hidden" name="delta" value="1" /><Submit className="btn-sm">{t('addCourt')}</Submit></form>
-              <form action={changeCourts}>{hidden()}<input type="hidden" name="from" value={snap.capacity} /><input type="hidden" name="delta" value="-1" /><Submit className="btn-sm btn-ghost">{t('removeCourt')}</Submit></form>
+            <form action={addCourt} className="row" style={{ marginTop: 14, flexWrap: 'nowrap' }}>
+              {hidden()}
+              <input name="court" type="number" inputMode="numeric" min="1" max="99" required placeholder={t('courtNo')} aria-label={t('courtNo')} style={{ maxWidth: 170 }} />
+              <Submit className="btn-sm">{t('addCourt')}</Submit>
+            </form>
+            <div className="row" style={{ marginTop: 10 }}>
+              {session.court_numbers.map((n) => (
+                <form key={n} action={removeCourt}>{hidden()}<input type="hidden" name="court" value={n} /><Submit className="btn-sm btn-ghost">{t('removeCourtN', { n })}</Submit></form>
+              ))}
               <a className="btn btn-sm btn-primary" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}>{t('share')}</a>
             </div>
           </section>

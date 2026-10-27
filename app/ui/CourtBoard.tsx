@@ -9,8 +9,8 @@ type Seat = { kind: 'member' | 'floater' | 'guest'; text: string; title: string;
  * Members are red circles, floaters beige squares, friends outlined squares; anyone past capacity
  * shows below the courts. Shape carries the type too, so it never relies on colour alone.
  */
-export function CourtBoard({ capacity, perCourt, people, showNames, labels }: {
-  capacity: number; perCourt: number; people: BoardPerson[]; showNames: boolean;
+export function CourtBoard({ capacity, perCourt, numbers, people, showNames, labels }: {
+  capacity: number; perCourt: number; /** Exact court numbers; used as labels when they match the number of courts. */ numbers?: number[]; people: BoardPerson[]; showNames: boolean;
   labels: { court: string; member: string; floater: string; friend: string; open: string; extra: string };
 }) {
   const seats: Seat[] = people.flatMap((p) => [
@@ -21,6 +21,7 @@ export function CourtBoard({ capacity, perCourt, people, showNames, labels }: {
   ]);
   const courts = Math.max(1, Math.ceil(capacity / Math.max(1, perCourt)));
   const left = Math.ceil(perCourt / 2);
+  const label = (c: number) => (numbers && numbers.length === courts ? numbers[c] : c + 1);
   const extra = seats.slice(courts * perCourt);
 
   const seatEl = (s: Seat | undefined, key: number, inCourt: boolean) =>
@@ -40,8 +41,8 @@ export function CourtBoard({ capacity, perCourt, people, showNames, labels }: {
           const base = c * perCourt;
           const spots = Array.from({ length: perCourt }, (_, i) => (base + i < capacity ? seats[base + i] : undefined));
           return (
-            <div key={c} className="court" role="group" aria-label={`${labels.court} ${c + 1}`}>
-              <span className="tag">{labels.court} {c + 1}</span>
+            <div key={c} className="court" role="group" aria-label={`${labels.court} ${label(c)}`}>
+              <span className="tag">{labels.court} {label(c)}</span>
               <div className="half">{spots.slice(0, left).map((s, i) => seatEl(s, base + i, true))}</div>
               <div className="half">{spots.slice(left).map((s, i) => seatEl(s, base + left + i, true))}</div>
             </div>

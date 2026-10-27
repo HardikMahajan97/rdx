@@ -6,9 +6,9 @@ const sql = postgres(process.env.DATABASE_URL, { onnotice: () => {} }); // "alre
 await sql.file(new URL('../db/schema.sql', import.meta.url).pathname);
 
 await sql`
-  insert into batches (id, label, start_time, courts) values
-    ('morning', 'Morning', '07:00', 2),
-    ('evening', 'Evening', '19:00', 3)
+  insert into batches (id, label, start_time, courts, court_numbers) values
+    ('morning', 'Morning', '07:00', 2, '{1,2}'),
+    ('evening', 'Evening', '19:00', 3, '{4,5,6}')
   on conflict (id) do nothing`;
 
 for (const [role, phone, name] of [

@@ -97,10 +97,11 @@ p { margin: 5px 0; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .top a { color: var(--text); font-family: var(--display); font-stretch: 118%; font-weight: 650; font-size: 1.12rem; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.top .brand-text { font-stretch: 100%; font-size: 1rem; white-space: nowrap; }
 .top .home-link { min-height: 44px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 99px; font-size: 1rem; font-stretch: 100%; font-weight: 500; gap: 7px; color: var(--muted); }
 .top .home-link svg { width: 20px; height: 20px; }
 .top .home-link:active { color: var(--text); }
-.top .logo { width: 28px; height: 28px; padding: 4px; border-radius: 8px; background: var(--red); }
+.top .logo { width: 32px; height: 32px; border-radius: 8px; background: #000; }
 @media (min-width: 960px) { .top { padding: 14px 32px; } }
 
 /* ---------- Layout ---------- */
@@ -172,6 +173,7 @@ details[open] > summary { margin-bottom: 12px; }
 .chip-rel.chip-rel { --g: var(--yellow-rgb); font-size: .85rem; font-weight: 600; color: var(--yellow); padding: 2px 11px; border-radius: 999px; }
 .batch-name { font-size: .95rem; color: var(--muted); }
 .slot-time { font-family: var(--display); font-stretch: 118%; font-size: clamp(1.35rem, 5.6vw, 1.7rem); font-weight: 650; line-height: 1.15; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.slot-courts { margin-top: 2px; color: var(--text); font-weight: 500; text-decoration: underline; text-decoration-color: var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; width: fit-content; }
 .slot-time .dash { color: var(--faint); font-weight: 400; margin: 0 2px; }
 
 /* ---------- Tiles ---------- */

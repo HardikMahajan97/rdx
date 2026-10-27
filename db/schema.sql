@@ -5,7 +5,8 @@ create table if not exists batches (
   label             text not null,
   start_time        time not null,               -- IST wall-clock time
   duration_min      int  not null default 60,
-  courts            int  not null,
+  courts            int  not null,               -- how many courts (= length of court_numbers)
+  court_numbers     int[] not null default '{}', -- the exact courts at the venue, e.g. {1,2}
   players_per_court int  not null default 4,
   price_rupees      int  not null default 100    -- fee per hour for floaters / friends (charged per seat)
 );
@@ -185,3 +186,15 @@ update bookings set charged = true where membership_id is not null and status = 
 -- Old flow: members were IN by default. Now everyone votes, so drop untouched future auto-votes.
 delete from bookings b using sessions s
   where s.id = b.session_id and b.source = 'auto' and b.status = 'booked' and s.starts_at > now();
+
+-- Exact court numbers. Morning plays on courts 1 and 2, evening on 4, 5 and 6 (set once, while none are stored yet).
+alter table batches add column if not exists court_numbers int[] not null default '{}';
+alter table sessions add column if not exists court_numbers int[] not null default '{}';
+update batches set court_numbers = '{1,2}' where id = 'morning' and cardinality(court_numbers) = 0;
+update batches set court_numbers = '{4,5,6}' where id = 'evening' and cardinality(court_numbers) = 0;
+update batches set courts = cardinality(court_numbers) where cardinality(court_numbers) > 0;
+-- Sessions that haven't started yet take their batch's courts.
+update sessions s set court_numbers = b.court_numbers, capacity = cardinality(b.court_numbers) * b.players_per_court
+  from batches b
+  where b.id = s.batch_id and cardinality(s.court_numbers) = 0 and cardinality(b.court_numbers) > 0
+    and s.starts_at > now() and not s.cancelled;

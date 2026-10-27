@@ -67,15 +67,38 @@ export async function setBookingStatus(form: FormData) {
   back(`/roster?sid=${sid}`, key);
 }
 
-/** Applies only if the capacity is still what the staff member was looking at, so repeated taps or a second staff member don't stack. */
-export async function changeCourts(form: FormData) {
+/** A court number from the form: 1 to 99, or null. */
+const courtNo = (f: FormData) => {
+  const n = int(f, 'court');
+  return n >= 1 && n <= 99 ? n : null;
+};
+
+/** Adds a court (by its exact number) to one session: players see it, and its seats open up. Adding it twice does nothing. */
+export async function addCourt(form: FormData) {
   await requireStaff('roster');
   const sid = int(form, 'sessionId');
-  const delta = int(form, 'delta') > 0 ? 1 : -1;
+  const n = courtNo(form);
+  if (!n) back(`/roster?sid=${sid}`, 'errCourt');
+  const done = await sql`
+    update sessions s set capacity = s.capacity + b.players_per_court,
+      court_numbers = (select array_agg(x order by x) from unnest(array_append(s.court_numbers, ${n}::int)) x)
+    from batches b
+    where s.id = ${sid} and b.id = s.batch_id and not s.cancelled and not s.closed and not (${n}::int = any(s.court_numbers))
+    returning s.id`;
+  back(`/roster?sid=${sid}`, done.length ? 'courtAdded' : 'courtExists', { n });
+}
+
+/** Takes one court (by number) out of a session. Taking it out twice does nothing. */
+export async function removeCourt(form: FormData) {
+  await requireStaff('roster');
+  const sid = int(form, 'sessionId');
+  const n = courtNo(form);
+  if (!n) back(`/roster?sid=${sid}`, 'errCourt');
   await sql`
-    update sessions s set capacity = greatest(0, s.capacity + ${delta} * b.players_per_court)
-    from batches b where s.id = ${sid} and b.id = s.batch_id and s.capacity = ${int(form, 'from')}`;
-  refresh(); // re-render the roster in place, no navigation or scroll jump
+    update sessions s set capacity = greatest(0, s.capacity - b.players_per_court), court_numbers = array_remove(s.court_numbers, ${n}::int)
+    from batches b
+    where s.id = ${sid} and b.id = s.batch_id and not s.cancelled and not s.closed and ${n}::int = any(s.court_numbers)`;
+  back(`/roster?sid=${sid}`, 'courtRemoved', { n });
 }
 
 export async function cancelSession(form: FormData) {
@@ -398,12 +421,17 @@ export async function removeStaff(form: FormData) {
 export async function saveBatch(form: FormData) {
   await requireStaff('batches');
   const id = str(form, 'id');
-  const courts = Math.max(0, int(form, 'courts'));
+  // "1, 2" or "4 5 6": the exact courts this batch plays on.
+  const numbers = [...new Set(str(form, 'courtNumbers').split(/[^0-9]+/).filter(Boolean).map(Number).filter((n) => n >= 1 && n <= 99))].sort((x, y) => x - y);
+  if (numbers.length === 0) back('/admin', 'errCourts');
   const perCourt = Math.max(1, int(form, 'playersPerCourt'));
   await sql`
-    update batches set courts = ${courts}, players_per_court = ${perCourt}, price_rupees = ${Math.max(0, int(form, 'price'))}
+    update batches set courts = ${numbers.length}, court_numbers = ${numbers}, players_per_court = ${perCourt},
+      price_rupees = ${Math.max(0, int(form, 'price'))}
     where id = ${id}`;
-  // Sessions that haven't started pick up the new court count.
-  await sql`update sessions set capacity = ${courts * perCourt} where batch_id = ${id} and starts_at > now()`;
+  // Sessions that haven't started pick up the new courts.
+  await sql`
+    update sessions set capacity = ${numbers.length * perCourt}, court_numbers = ${numbers}
+    where batch_id = ${id} and starts_at > now() and not cancelled`;
   back('/admin', 'batchSaved');
 }

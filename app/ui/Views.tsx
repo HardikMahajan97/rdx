@@ -155,7 +155,7 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
               <div><b>{snap.withdrawn.length}</b><span>{t('tileNotComing')}</span></div>
               <div><b>₹{snap.toCollect}</b><span>{t('tileCollect')}</span></div>
             </div>
-            <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} people={boardPeople(snap)} showNames labels={boardLabels(t)} />
+            <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} numbers={session.court_numbers} people={boardPeople(snap)} showNames labels={boardLabels(t)} />
             <People t={t} snap={snap} />
             <details className="card-nested">
               <summary>{t('attendance')}</summary>
@@ -273,7 +273,7 @@ export async function PlayerSessions({ me, t, lang, plan, upcoming }: {
           <SlotHead t={t} lang={lang} batch={batch} session={session} />
           <Fill t={t} snap={snap} />
           {/* Floaters see how full the courts are, not who is on them. */}
-          <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} people={boardPeople(snap, me.id)}
+          <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} numbers={session.court_numbers} people={boardPeople(snap, me.id)}
             showNames={isMember} labels={boardLabels(t)} />
           <SlotAction t={t} lang={lang} batch={batch} session={session} snap={snap} mine={mine} plan={plan} reserved={reserved} />
           {isMember && <People t={t} snap={snap} />}
