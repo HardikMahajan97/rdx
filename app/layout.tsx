@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Link href="/">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="logo" src="/site/assets/img/logo.png" width={32} height={32} alt="" />
-            <span className="brand-text">RDx Baddy Group</span>
+            <span className="brand-text">RDx BADDY GROUP</span>
           </Link>
           {/* Plain link on purpose: `/?home` is answered by the proxy with the promo pages, not by the app router. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}

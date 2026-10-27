@@ -18,7 +18,7 @@ The public promo website for the RDx badminton community. It is **part of the bo
 
 All of these live in `assets/js/config.js`:
 
-- Name **RDx**: R and D uppercase, x lowercase in red. **No apostrophe** (the owner tried "RD'x", then asked for it to be removed everywhere). The group is "RDx BADDY GROUP".
+- Name **RDx**: R and D uppercase, x lowercase in red. **No apostrophe** (the owner tried "RD'x", then asked for it to be removed everywhere). The group is always written **RDx BADDY GROUP** on one line (never wrapped), capitals except the x; the header and footer wordmark, the app's top bar and the install name all use it.
 - **300+ members**.
 - Venue: **Aliens Badminton Academy**, shown once, as a line with a pin and a Google Maps link (`SITE.mapUrl`, https://maps.app.goo.gl/nebRK6iLGiv4KU559) just above "Timings and courts" on Home and About. The owner first had it removed everywhere, then asked for it back in that one place only; don't add it to the footer or descriptions.
 - **Batches:**

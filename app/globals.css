@@ -97,7 +97,7 @@ p { margin: 5px 0; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .top a { color: var(--text); font-family: var(--display); font-stretch: 118%; font-weight: 650; font-size: 1.12rem; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
-.top .brand-text { font-stretch: 100%; font-size: 1rem; white-space: nowrap; }
+.top .brand-text { font-stretch: 100%; font-size: clamp(.8rem, 3.4vw, 1rem); white-space: nowrap; min-width: 0; }
 .top .home-link { min-height: 44px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 99px; font-size: 1rem; font-stretch: 100%; font-weight: 500; gap: 7px; color: var(--muted); }
 .top .home-link svg { width: 20px; height: 20px; }
 .top .home-link:active { color: var(--text); }
