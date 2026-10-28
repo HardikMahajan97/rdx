@@ -3,8 +3,10 @@
 export const SITE = {
   name: 'RDx',
   tagline: 'Badminton every morning and evening.',
-  // Where every Join / Register / Log in button goes: the booking app's sign-in screen (same website).
+  // Where the Log in buttons go (data-app): the booking app's Log in screen (same website).
   appUrl: '/?app=1',
+  // Where the Register buttons go (data-app="register"): the app's own registration page.
+  registerUrl: '/register',
   // Where you play. Leave empty to hide it. mapUrl: a Google Maps link to it (optional).
   venue: 'Aliens Badminton Academy',
   mapUrl: 'https://maps.app.goo.gl/nebRK6iLGiv4KU559',

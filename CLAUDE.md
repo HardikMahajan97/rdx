@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-This file holds the intent and the decisions made so far, so future work doesn't undo them. The README covers setup and the product as users see it; read both before changing anything. The public promo website is part of this same deployment (decided: one Vercel project, one domain). Its static pages live in `public/site/`, its API in `lib/site/` + `app/api/`, and its notes in `docs/promo-site/CLAUDE.md`. `proxy.ts` decides what `/` shows: with a `pid`, `claim` or `rdx-app` cookie, or `?app` / `?msg` in the URL, it's the app; otherwise the static promo home. The promo pages `/about /play /membership /news /join` are rewritten to files in `public/site/`. There is **one admin page**: `/admin`. Its "Announcements" section (`app/ui/PostsAdmin.tsx`) posts to the promo site; the API (`lib/site/lib.js` `isAdmin`) accepts only a signed-in, PIN-unlocked **admin** (not core). `/site-admin` redirects to `/admin`. Promo Join / Log in buttons go to `/?app=1`. Promo files are static, so they cost no compute and a player's page never loads promo code. Signing out (`leave`) lands on the promo home.
+This file holds the intent and the decisions made so far, so future work doesn't undo them. The README covers setup and the product as users see it; read both before changing anything. The public promo website is part of this same deployment (decided: one Vercel project, one domain). Its static pages live in `public/site/`, its API in `lib/site/` + `app/api/`, and its notes in `docs/promo-site/CLAUDE.md`. `proxy.ts` decides what `/` shows: with a `pid`, `claim` or `rdx-app` cookie, or `?app` / `?msg` in the URL, it's the app; otherwise the static promo home. The promo pages `/about /play /membership /news /join` and the policy pages `/terms /refund-policy /privacy /contact` are rewritten to files in `public/site/`. There is **one admin page**: `/admin`. Its "Announcements" section (`app/ui/PostsAdmin.tsx`) posts to the promo site; the API (`lib/site/lib.js` `isAdmin`) accepts only a signed-in, PIN-unlocked **admin** (not core). `/site-admin` redirects to `/admin`. Promo **Register** buttons go to the app's `/register` page and **Log in** buttons to `/?app=1` (the word "Join" is no longer used on buttons). Promo files are static, so they cost no compute and a player's page never loads promo code. Signing out (`leave`) lands on the promo home.
 
 ## What this is and who it's for
 
@@ -26,8 +26,8 @@ This file holds the intent and the decisions made so far, so future work doesn't
 |---|---|
 | `app/page.tsx` | Sign-in and register screens, PIN screens, player home, staff dashboard entry |
 | `app/actions.ts` | Player actions: `join`, `register`, `setPin`, `enterPin`, `forgotPin`, `book`, `withdraw`, `confirmSlot`, `markAttended`, `applyMembership`, `updateName`, … |
-| `app/staff-actions.ts` | Staff actions: `togglePaid`, `setBookingStatus`, `changeCourts`, `cancelSession`, `quoteRequest`, `savePlan`, `endPlan`, `addPlayer`, `approveSignup`, `rejectSignup`, `resetPin`, `resetPinByPhone`, `dismissPinRequest`, `saveStaff`, `removeStaff`, `deactivatePlayer`, `reactivatePlayer`, `saveBatch` |
-| `app/roster`, `app/members`, `app/admin` | Staff pages |
+| `app/staff-actions.ts` | Staff actions: `togglePaid`, `setBookingStatus`, `changeCourts`, `cancelSession`, `quoteRequest`, `savePlan`, `endPlan`, `addPlayer`, `approveSignup`, `rejectSignup`, `resetPin`, `resetPinByPhone`, `dismissPinRequest`, `saveStaff`, `removeStaff`, `deactivatePlayer`, `reactivatePlayer`, `deletePlayer`, `restorePlayer`, `saveBatch` |
+| `app/roster`, `app/members`, `app/players`, `app/admin` | Staff pages. `/players` is the one full player list: filters in the URL (GET form), status chips with counts, 20 per page |
 | `app/ui/` | `Views.tsx` (dashboard, player sessions, `SlotAction`), `Shared.tsx` (`SlotHead`, `Loader`, `Rally`, `Tile`), `PlanForm`, `ApplyForm`, `CourtBoard`, `Client.tsx` (`Submit`, `AutoRefresh`, `Toast`) |
 | `lib/auth.ts`, `lib/staff-token.ts` | Cookies, PINs, roles and permissions |
 | `lib/sessions.ts` | Slot timing, phases, the sweep (lock and close), `staffStatuses`, `seatFee` |
@@ -39,9 +39,9 @@ This file holds the intent and the decisions made so far, so future work doesn't
 
 ## Accounts and sign-in (decided)
 
-- **Self-registration with approval.** The sign-in page has two parts:
-  - **Sign in:** mobile number → **Continue** → PIN.
-  - **"New to RDx? Register":** a separate form. Fields in this order: first name, last name, mobile number, email, skill level (basic / intermediate / advanced), gender (male / female / other). It has a highlighted blue notice explaining that the registration goes to the RDx admin and core team, and a **Register** button.
+- **Self-registration with approval. Log in and Register are separate pages** (the owner asked for this; don't merge them again):
+  - **Log in** (`/`, reached by `/?app=1`): only the mobile number and a **Log in** button → PIN screen. No register form or link. An unregistered number is sent to `/register` with `needName`.
+  - **Register** (`app/register/page.tsx`, `/register`): only the form, with no sign-in option. Fields in this order: first name, last name, mobile number, email, skill level (basic / intermediate / advanced), gender (male / female / other). It has the blue notice explaining that the registration goes to the RDx admin and core team, and a **Register** button. After sending, the form is replaced by the message. An already-approved number is sent to Log in (`alreadyRegistered`).
   - A registration creates a player with `approved_at = null`. Core or admin approve or reject it under **Members → New sign-ups**; the dashboard and the admin page show how many are waiting. Rejecting deletes the pending row, so the number can register again.
   - The messages are polite and explain the approval step (keys `registerNotice`, `signupSent`, `signupPending`, `alreadyRegistered`).
 - Players added by staff are **approved straight away**: Members → Add a player, add member by phone (PlanForm), and add staff. Adding a number that's already waiting approves it.
@@ -58,6 +58,9 @@ This file holds the intent and the decisions made so far, so future work doesn't
   - `deactivated_at` signs the player out everywhere and blocks sign-in.
   - Their votes for sessions that haven't started are withdrawn, giving back any plan session already taken, and open plan requests are closed.
   - Their plan is kept. Reactivating restores access with the same PIN.
+- **Delete (soft, admin only, players only):** `deleted_at` / `deleted_by`. Deleting also deactivates and does the same clean-up. A deleted player is hidden from every list and count (Players, Members, the dashboard, sign-ups, PIN requests); past sessions, payments and the plan ledger are kept. Signing in, registering, adding, giving a plan to, or promoting that number is refused (`accountDeleted`, `errPlayerDeleted`). Admins see them under Players → Deleted and can **Restore**, which brings them back still deactivated; then Reactivate.
+- **Players page (`/players`, core and admin):** search (name, number, email) and filters for account status, plan (members, floaters, fixed, wallet, low, used up, never), plan batch, skill, gender, last played, account type and registration dates, plus sort. Actions there come back to the same filters (`back`). The admin page only shows the headline counts and links to it.
+- **Staff nav on phones** (≤480 px) is a 3-column grid (Dashboard, Roster, Members / Players, Admin, Lock), so labels never get cut off.
 - **Names:** `first_name` and `last_name` are stored, and `players.name` is a **generated column** (first + last, hiding the `'x'` filler used for older accounts). Never write to `name`. Players can edit their name from their home screen.
 - **Roles:** `player`, `core` (roster, members, pins) and `admin` (everything, plus staff, batches and cancelling sessions). Staff don't book slots; they get the dashboard.
 
@@ -108,7 +111,7 @@ This file holds the intent and the decisions made so far, so future work doesn't
   - A missing column once broke production (`column "deactivated_at" does not exist`) because the push came before the setup.
 - Claude's auto mode **can't run `db:setup:prod`**; it's blocked as a production change. Give the owner the command, for example `! npm run db:setup:prod`. Read-only `db:check:prod` is fine.
 - Back up the local database before running `db:setup` on it: `pg_dump … > ~/badminton-backup-before-<change>.sql`. Test schema changes on a scratch copy (`badminton_wip`) first.
-- `.env.local` holds the local `DATABASE_URL`; a commented-out Neon line in it is ignored. `.env.production` points at Neon, and `setup.mjs` keeps the `ADMIN_*` / `CORE_*` accounts in it (admin 8898117019, core 8793103747).
+- `.env.local` holds the local `DATABASE_URL`; a commented-out Neon line in it is ignored. `.env.production` points at Neon, and `setup.mjs` makes sure the `ADMIN_*` / `CORE_*` accounts in it exist (8898117019, 8793103747). It **only raises a role, never lowers it** (8793103747, Sadanand Wagh, was promoted to admin in the app, and older versions of the script kept demoting him to core), and replaces a name only while it is still a placeholder ("Admin", "Core member").
 - Staff have their own PIN on Neon; never set or overwrite real PINs. Use test PINs only in scratch databases.
 
 ## Local setup and tooling

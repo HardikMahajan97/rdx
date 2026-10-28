@@ -133,6 +133,7 @@ export async function addPlayer(form: FormData) {
     on conflict (phone) do nothing returning *`;
   if (!added) {
     const [p] = await sql<Player[]>`select * from players where phone = ${phone}`;
+    if (p?.deleted_at) back('/members', 'errPlayerDeleted', { name: p.name });
     // Someone already asked to join with this number: adding them is the same as approving.
     if (p && !p.approved_at) {
       await sql`update players set approved_at = now(), approved_by = ${staff.id} where id = ${p.id}`;
@@ -234,6 +235,8 @@ export async function savePlan(form: FormData) {
     } else {
       const phone = normalizePhone(str(form, 'phone'));
       if (!phone) return ['errPhone'];
+      const [gone] = await tx<Player[]>`select * from players where phone = ${phone} and deleted_at is not null`;
+      if (gone) return ['errPlayerDeleted', { name: gone.name }];
       // Giving someone a plan also approves them if they were still waiting.
       [player] = await tx<Player[]>`
         update players set approved_at = coalesce(approved_at, now()), approved_by = coalesce(approved_by, ${staff.id})
@@ -324,6 +327,7 @@ export async function saveStaff(form: FormData) {
   if (phone === admin.phone) back('/admin', 'errSelf');
 
   const [p] = await sql<Player[]>`select * from players where phone = ${phone!}`;
+  if (p?.deleted_at) back('/admin', 'errPlayerDeleted', { name: p.name });
   if (!p && !name) back('/admin', 'errName');
   const [saved] = p
     ? await sql<Player[]>`
@@ -339,7 +343,7 @@ export async function saveStaff(form: FormData) {
 export async function resetPin(form: FormData) {
   const staff = await requireStaff('pins');
   const path = safePath(str(form, 'back') || '/members');
-  const [target] = await sql<Player[]>`select * from players where id = ${int(form, 'id')}`;
+  const [target] = await sql<Player[]>`select * from players where id = ${int(form, 'id')} and deleted_at is null`;
   if (!target || !canResetPin(staff, target)) back(path, 'errCantReset');
   // From the "Forgot PIN" list: only if the request is still open. If another staff member already reset it and the
   // player has chosen a new PIN, a second reset would wipe that new PIN.
@@ -356,7 +360,7 @@ export async function resetPinByPhone(form: FormData) {
   const staff = await requireStaff('pins');
   const phone = normalizePhone(str(form, 'phone'));
   if (!phone) back('/members', 'errPhone');
-  const [target] = await sql<Player[]>`select * from players where phone = ${phone}`;
+  const [target] = await sql<Player[]>`select * from players where phone = ${phone} and deleted_at is null`;
   if (!target) back('/members', 'errNoPlayer');
   if (!canResetPin(staff, target)) back('/members', 'errCantReset');
   await sql`update players set pin_hash = null, pin_reset_requested_at = null where id = ${target.id}`;
@@ -375,9 +379,28 @@ export async function dismissPinRequest(form: FormData) {
 }
 
 /**
- * Admin switches a player off: they're signed out everywhere and can't sign in. Their votes for sessions that
- * haven't started are withdrawn (giving back any plan session already taken) and open plan requests are closed.
- * Their plan itself is kept, so reactivating puts them back where they were.
+ * Signs a player out of everything that's still ahead: votes for sessions that haven't started are withdrawn
+ * (giving back any plan session already taken) and open plan requests are closed. The plan itself is kept.
+ */
+async function switchOff(tx: Tx, id: number, by: number) {
+  const upcoming = await tx<{ id: number }[]>`
+    select b.id from bookings b join sessions s on s.id = b.session_id
+    where b.player_id = ${id} and b.status in ('booked', 'confirmed') and s.starts_at > now() and not s.cancelled`;
+  await refundBookings(tx, upcoming.map((b) => b.id), by);
+  await tx`
+    update bookings set status = 'withdrawn', confirmed_at = null, checked_by = ${by}, updated_at = now()
+    where id = any(${upcoming.map((b) => b.id)}::int[])`;
+  await tx`
+    update membership_requests set status = 'rejected', handled_by = ${by}, handled_at = now()
+    where player_id = ${id} and status in ('pending', 'quoted')`;
+}
+
+/** Where to go after an action on the Players page: back to the same filters and page. */
+const playersBack = (form: FormData) => safePath(str(form, 'back') || '/players');
+
+/**
+ * Admin switches a player off: they're signed out everywhere and can't sign in (see switchOff).
+ * Reactivating puts them back where they were.
  */
 export async function deactivatePlayer(form: FormData) {
   const admin = await requireStaff('staff');
@@ -385,28 +408,49 @@ export async function deactivatePlayer(form: FormData) {
   const name = await sql.begin(async (tx) => {
     const [p] = await tx<Player[]>`
       update players set deactivated_at = now(), pin_reset_requested_at = null
-      where id = ${id} and id <> ${admin.id} and role = 'player' and deactivated_at is null returning *`;
+      where id = ${id} and id <> ${admin.id} and role = 'player' and deactivated_at is null and deleted_at is null returning *`;
     if (!p) return null;
-    const upcoming = await tx<{ id: number }[]>`
-      select b.id from bookings b join sessions s on s.id = b.session_id
-      where b.player_id = ${id} and b.status in ('booked', 'confirmed') and s.starts_at > now() and not s.cancelled`;
-    await refundBookings(tx, upcoming.map((b) => b.id), admin.id);
-    await tx`
-      update bookings set status = 'withdrawn', confirmed_at = null, checked_by = ${admin.id}, updated_at = now()
-      where id = any(${upcoming.map((b) => b.id)}::int[])`;
-    await tx`
-      update membership_requests set status = 'rejected', handled_by = ${admin.id}, handled_at = now()
-      where player_id = ${id} and status in ('pending', 'quoted')`;
+    await switchOff(tx, id, admin.id);
     return p.name;
   });
-  back('/admin', name ? 'playerDeactivated' : 'errCantDeactivate', { name: name ?? '' });
+  back(playersBack(form), name ? 'playerDeactivated' : 'errCantDeactivate', { name: name ?? '' });
 }
 
 export async function reactivatePlayer(form: FormData) {
   await requireStaff('staff');
   const [p] = await sql<Player[]>`
-    update players set deactivated_at = null where id = ${int(form, 'id')} and deactivated_at is not null returning *`;
-  back('/admin', 'playerReactivated', { name: p?.name ?? '' });
+    update players set deactivated_at = null
+    where id = ${int(form, 'id')} and deactivated_at is not null and deleted_at is null returning *`;
+  back(playersBack(form), 'playerReactivated', { name: p?.name ?? '' });
+}
+
+/**
+ * Soft delete (admin only, players only): the account is deactivated as well, and disappears from every list
+ * and count. Their history (past sessions, payments, plan ledger) is kept, and the number can't be reused
+ * until an admin restores them from Players → Deleted.
+ */
+export async function deletePlayer(form: FormData) {
+  const admin = await requireStaff('staff');
+  const id = int(form, 'id');
+  const name = await sql.begin(async (tx) => {
+    const [p] = await tx<Player[]>`
+      update players set deleted_at = now(), deleted_by = ${admin.id},
+        deactivated_at = coalesce(deactivated_at, now()), pin_reset_requested_at = null
+      where id = ${id} and id <> ${admin.id} and role = 'player' and deleted_at is null returning *`;
+    if (!p) return null;
+    await switchOff(tx, id, admin.id);
+    return p.name;
+  });
+  back(playersBack(form), name ? 'playerDeleted' : 'errCantDelete', { name: name ?? '' });
+}
+
+/** Brings a deleted player back into the lists. They stay deactivated until an admin reactivates them. */
+export async function restorePlayer(form: FormData) {
+  await requireStaff('staff');
+  const [p] = await sql<Player[]>`
+    update players set deleted_at = null, deleted_by = null
+    where id = ${int(form, 'id')} and deleted_at is not null returning *`;
+  back(playersBack(form), p ? 'playerRestored' : 'alreadyHandled', { name: p?.name ?? '' });
 }
 
 export async function removeStaff(form: FormData) {

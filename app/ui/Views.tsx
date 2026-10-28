@@ -108,13 +108,13 @@ export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t:
       (select count(*) from membership_requests where status = 'pending')::int as pending,
       (select count(*) from membership_requests where status = 'quoted')::int as quoted,
       (select count(*) from memberships where status = 'active' and sessions_used < sessions_total
-         and (ends_on is null or ends_on >= ${istDate()}))::int as active,
-      (select count(*) from memberships where status = 'active' and sessions_total - sessions_used between 1 and 3)::int as low,
-      (select count(*) from memberships where status = 'active' and kind = 'wallet' and sessions_used < sessions_total)::int as wallets`;
+         and (ends_on is null or ends_on >= ${istDate()}) and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as active,
+      (select count(*) from memberships where status = 'active' and sessions_total - sessions_used between 1 and 3 and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as low,
+      (select count(*) from memberships where status = 'active' and kind = 'wallet' and sessions_used < sessions_total and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as wallets`;
   const low = await sql<{ name: string; remaining: number; batch_id: string | null; kind: string }[]>`
     select p.name, m.sessions_total - m.sessions_used as remaining, m.batch_id, m.kind
     from memberships m join players p on p.id = m.player_id
-    where m.status = 'active' and m.sessions_total - m.sessions_used between 1 and 3
+    where m.status = 'active' and m.sessions_total - m.sessions_used between 1 and 3 and p.deleted_at is null
     order by remaining, p.name limit 12`;
   const requests = await sql<{ id: number; name: string; plan: string; status: string; sessions_requested: number | null }[]>`
     select r.id, p.name, r.plan, r.status, r.sessions_requested from membership_requests r join players p on p.id = r.player_id

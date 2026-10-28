@@ -22,6 +22,8 @@ create table if not exists players (
   pin_hash   text,                               -- scrypt; everyone sets it at first sign-in, and again after a reset
   pin_reset_requested_at timestamptz,            -- "Forgot PIN": waiting for core/admin to reset it
   deactivated_at timestamptz,                    -- set by an admin: can't sign in until reactivated
+  deleted_at timestamptz,                        -- soft delete by an admin: hidden from every list (also deactivated)
+  deleted_by int,
   approved_at timestamptz,                       -- self sign-ups wait for core/admin; null = not approved yet
   approved_by int,
   email      text,                               -- asked at self sign-up
@@ -136,6 +138,8 @@ alter table players add column if not exists name text
 
 alter table players add column if not exists pin_reset_requested_at timestamptz;
 alter table players add column if not exists deactivated_at timestamptz;
+alter table players add column if not exists deleted_at timestamptz;
+alter table players add column if not exists deleted_by int;
 -- Sign-ups need approval now. Everyone who already had an account counts as approved.
 do $$ begin
   if not exists (select 1 from information_schema.columns

@@ -35,6 +35,9 @@ export type Player = {
   pin_hash: string | null;
   pin_reset_requested_at: Date | null;
   deactivated_at: Date | null;
+  /** Soft-deleted by an admin: hidden from every list. Deleting also deactivates. */
+  deleted_at: Date | null;
+  deleted_by: number | null;
   /** Self sign-ups are null until core/admin approve them. */
   approved_at: Date | null;
   email: string | null;

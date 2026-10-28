@@ -24,8 +24,7 @@
   --body: 'Mukta', system-ui, sans-serif;
   color-scheme: dark;
 }
-@media (max-width: 400px) { .top { column-gap: 8px; } .top .btn-sm { padding: 0 12px; } }
-@media (max-width: 360px) { :root { --gutter: 12px; } .top .btn-sm { padding: 0 10px; } .brand-logo { width: 32px; height: 32px; } }
+@media (max-width: 360px) { :root { --gutter: 12px; } }
 @media (min-width: 600px) { :root { --gutter: 28px; } }
 @media (min-width: 720px) { :root { --head: 60px; } }
 @media (min-width: 1000px) { :root { --gutter: 48px; } }
@@ -86,6 +85,22 @@ p { margin: 0; }
 }
 .brand { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; margin-right: auto; min-height: 56px; }
 .brand-logo { width: 40px; height: 40px; border-radius: 10px; background: #000; }
+/* Phones: logo, name, Log in and Register share the first row (measured to fit from 320 px up).
+   Under 360 px the logo image steps aside so the "RDx BADDY GROUP" name can stay on one line. */
+@media (max-width: 430px) {
+  .top { column-gap: 8px; }
+  .top .mark { font-size: clamp(.8rem, 3.4vw, 1.25rem); }
+  .top .btn-sm { padding: 0 12px; font-size: .92rem; }
+  .brand-logo { width: 32px; height: 32px; }
+}
+@media (max-width: 374px) { .top .btn-sm { padding: 0 10px; } }
+@media (max-width: 359px) { .brand-logo { display: none; } }
+/* Narrow laptops and phone landscape: everything is on one row, so the links and the name get a little tighter. */
+@media (min-width: 720px) and (max-width: 959px) {
+  .top { column-gap: 10px; }
+  .top .mark { font-size: 1.05rem; }
+  .top nav a { padding: 0 9px; }
+}
 /* Phones: the section links get their own row under the logo, swipeable if they don't fit */
 .top nav {
   order: 3; flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
@@ -327,6 +342,8 @@ p { margin: 0; }
 .foot .mark { font-size: 1.3rem; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .foot-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); text-decoration: none; }
+.foot-links.legal-links { margin-top: -6px; }
+.foot-links.legal-links a { font-size: .92rem; }
 .foot .credit { color: var(--text); }
 .foot .copy { color: var(--muted); font-size: .9rem; padding-top: 6px; border-top: 1px solid var(--line); }
 
@@ -403,3 +420,21 @@ html.intro { overflow: hidden; }
 }
 .intro-layer.out { opacity: 0; pointer-events: none; }
 .intro-layer video { width: min(90vw, 90svh, 560px); height: auto; aspect-ratio: 1; background: #000; }
+
+/* ---------- Policy pages (terms, refunds, privacy, contact) ---------- */
+
+.updated { margin-top: 10px; color: var(--muted); font-size: .92rem; }
+.legal { max-width: calc(72ch + 2 * var(--gutter)); margin-left: 0; }
+@media (min-width: 1120px) { .legal { margin-left: max(0px, calc((100vw - var(--max)) / 2)); } }
+.legal h2 { font-size: clamp(1.3rem, 5.2vw, 1.6rem); font-stretch: 108%; margin: 36px 0 10px; }
+.legal h2:first-child { margin-top: 0; }
+.legal p, .legal li { color: #ddd3bd; overflow-wrap: anywhere; }
+.legal p + p { margin-top: 10px; }
+.legal ul, .legal ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; }
+.legal b { color: var(--text); font-weight: 600; }
+.legal a { color: var(--text); text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 3px; }
+.contact-list { display: grid; gap: 4px; margin: 0; padding: 18px; background: var(--carbon); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.contact-list dt { color: var(--muted); font-size: .92rem; margin-top: 14px; }
+.contact-list dt:first-child { margin-top: 0; }
+.contact-list dd { margin: 0; line-height: 1.9; }
+.contact-list + h2 { margin-top: 40px; }

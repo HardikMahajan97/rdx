@@ -192,9 +192,9 @@ async function loadPosts() {
   renderFeed();
 }
 
-/** Every join / log in button opens the sign-in screen of the booking app (same site; the server decides what `/` shows). */
+/** Register buttons open the app's registration page; Log in buttons its Log in screen (same site). */
 function wireAppLinks() {
-  document.querySelectorAll('[data-app]').forEach((a) => { a.href = SITE.appUrl; });
+  document.querySelectorAll('[data-app]').forEach((a) => { a.href = a.dataset.app === 'register' ? SITE.registerUrl : SITE.appUrl; });
 }
 
 function wireFilters() {
@@ -380,7 +380,7 @@ function guide() {
   playOnce(box, (k) => { p = k; update(k); }, 3400);
 }
 
-/** Phones: a join bar that hides while the page's own join buttons, the hero or the footer are on screen. */
+/** Phones: a Register bar that hides while the page's own Register buttons, the hero or the footer are on screen. */
 function dock() {
   const bar = $('#dock');
   const hide = [...document.querySelectorAll('[data-hide-dock]')];

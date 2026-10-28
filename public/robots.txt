@@ -5,5 +5,10 @@ Allow: /play
 Allow: /membership
 Allow: /news
 Allow: /join
+Allow: /register
+Allow: /terms
+Allow: /refund-policy
+Allow: /privacy
+Allow: /contact
 Allow: /site/assets/
 Disallow: /

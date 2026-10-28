@@ -36,6 +36,7 @@ export function StaffNav({ me, t, here }: { me: Player; t: T; here: string }) {
     { href: '/', label: t('navDashboard'), show: true },
     { href: '/roster', label: t('navRoster'), show: can(me.role, 'roster') },
     { href: '/members', label: t('navMembers'), show: can(me.role, 'members') },
+    { href: '/players', label: t('navPlayers'), show: can(me.role, 'members') },
     { href: '/admin', label: t('navAdmin'), show: can(me.role, 'staff') },
   ].filter((l) => l.show);
   return (

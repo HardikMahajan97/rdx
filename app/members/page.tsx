@@ -61,7 +61,7 @@ async function MembersContent({ searchParams }: Props) {
       from (select * from plan_ledger where membership_id = m.id order by created_at desc limit 12) x
       left join bookings b on b.id = x.booking_id left join sessions s on s.id = b.session_id
     ) l on true
-    where m.status = 'active'
+    where m.status = 'active' and p.deleted_at is null
     order by p.name`;
 
   const labels = (submit: Key) => ({

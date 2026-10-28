@@ -11,6 +11,11 @@ const PROMO: Record<string, string> = {
   '/membership': '/site/membership.html',
   '/news': '/site/news.html',
   '/join': '/site/join.html',
+  // Policy pages PhonePe checks before enabling payments: public, no sign-in, linked from every footer.
+  '/terms': '/site/terms.html',
+  '/refund-policy': '/site/refund-policy.html',
+  '/privacy': '/site/privacy.html',
+  '/contact': '/site/contact.html',
 };
 
 /** A "Join / Log in" button sends people to `/?app=1`; this cookie keeps them in the app for a while after (the ?msg notices drop the query). */
