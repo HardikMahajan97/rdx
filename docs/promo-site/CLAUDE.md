@@ -47,7 +47,7 @@ All of these live in `assets/js/config.js`:
   - Refunds match the app: cancel until 30 min before the start, so a plan session goes back or a paid fee is refunded in 5–7 business days; after that, final; activated plans are not refundable; failed payments are returned by the bank in 3–5 working days.
   - Court rules: arrive on time, non-marking shoes, bring your own racket, respect the rotation.
   - Contact: Rahul's number first, then the core team's. Support hours: every day, 7 AM to 9 PM.
-  - The email and the venue's full address must match what Rahul enters on PhonePe. Until the owner gives them, `contact.html` has `TODO-EMAIL` / `TODO-ADDRESS`; **don't deploy it with those.**
+  - **Email and full address are not on the Contact page yet.** The owner had the placeholders removed (29 Oct 2026); it shows the venue name with the Maps link instead. PhonePe's checklist asks for a support email and an operating address that match what Rahul enters on PhonePe, so add both (and the "email" mention back to the other three pages' contact line) once the owner gives them.
   - The safety clause (play at your own risk; RDx isn't liable for injury or lost belongings) and "governed by the laws of India" are standard wording, not facts from the owner.
 - Icons come from `assets/img/sprite.svg` (`<use href="/assets/img/sprite.svg#i-shuttle">`). The shuttle artwork lives there now.
 - Header: logo, page links (a second swipeable row on phones; `aria-current="page"` is set in each file) and a Join button. The footer has the page links, then the copyright line at the very end: "Copyright © 2027 RDx BADDY GROUP" (fixed text, owner's wording). Above it, a credit line: "Hardik Mahajan · Developer & Technical Team".
