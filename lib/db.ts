@@ -3,10 +3,14 @@ import postgres from 'postgres';
 const globalForDb = globalThis as unknown as { sql?: postgres.Sql };
 
 // Keep `date` columns as 'YYYY-MM-DD' strings so IST dates never shift.
+// prepare: false — Neon's pooler keeps server connections open across deploys, so a query prepared before a
+// schema change (e.g. `select *` before a new column) keeps failing with "cached plan must not change result type".
+// Unprepared queries are planned fresh each time, which is fine at this size.
 export const sql =
   globalForDb.sql ??
   postgres(process.env.DATABASE_URL!, {
     max: 5,
+    prepare: false,
     types: {
       date: { to: 1082, from: [1082], serialize: (x: string) => x, parse: (x: string) => x },
     },
