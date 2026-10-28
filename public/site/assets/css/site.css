@@ -76,6 +76,7 @@ p { margin: 0; }
 /* "RDx BADDY GROUP": always on one line, in capitals except the x */
 .mark { white-space: nowrap; letter-spacing: -.01em; }
 .top .mark { font-size: clamp(.8rem, 3.9vw, 1.25rem); }
+.top .mark i { color: inherit; } /* navbar: the x matches the rest of the name */
 .top {
   position: sticky; top: 0; z-index: 30;
   display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px;
