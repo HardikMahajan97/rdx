@@ -19,7 +19,7 @@ const REQUIRED = {
   plan_ledger: ['id', 'membership_id', 'delta', 'reason', 'booking_id', 'amount_rupees', 'by_player'],
   membership_requests: ['id', 'player_id', 'batch_id', 'plan', 'sessions_requested', 'amount_rupees', 'status'],
   sessions: ['id', 'batch_id', 'date', 'starts_at', 'capacity', 'court_numbers', 'locked', 'closed', 'cancelled'],
-  bookings: ['id', 'session_id', 'player_id', 'guests', 'status', 'membership_id', 'charged', 'paid', 'confirmed_at', 'attended_at'],
+  bookings: ['id', 'session_id', 'player_id', 'guests', 'status', 'membership_id', 'charged', 'paid', 'paid_rupees', 'confirmed_at', 'attended_at'],
   rate_limits: ['key', 'count', 'window_start'],
 };
 

@@ -107,6 +107,7 @@ create table if not exists bookings (
   membership_id int references memberships(id),  -- plan that pays for the player's own seat
   charged       boolean not null default false,  -- the plan session has been taken off the balance
   paid          boolean not null default false,  -- daily fee collected by staff
+  paid_rupees   int,                             -- what was collected, fixed at the moment staff mark it paid (null = not paid / refunded)
   checked_by    int references players(id),
   confirmed_at  timestamptz,
   attended_at   timestamptz,
@@ -202,3 +203,10 @@ update sessions s set court_numbers = b.court_numbers, capacity = cardinality(b.
   from batches b
   where b.id = s.batch_id and cardinality(s.court_numbers) = 0 and cardinality(b.court_numbers) > 0
     and s.starts_at > now() and not s.cancelled;
+
+-- The fee actually collected is stored when staff mark it paid, so a later price change can't rewrite past revenue.
+-- Rows already marked paid get the fee at today's price (the best we know).
+alter table bookings add column if not exists paid_rupees int;
+update bookings b set paid_rupees = ((b.membership_id is null)::int + b.guests) * round(bt.price_rupees * bt.duration_min / 60.0)
+  from sessions s join batches bt on bt.id = s.batch_id
+  where s.id = b.session_id and b.paid and b.paid_rupees is null;

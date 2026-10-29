@@ -2,7 +2,8 @@ import { sql, type Batch, type Booking, type Lang, type Membership, type Player,
 import { batchName, daysLabel, type T } from '@/lib/i18n';
 import { bookable, covers, planBlocks, planLeft, reservedSessions } from '@/lib/members';
 import { attendanceHistory, snapshot, type Snapshot, type SnapshotRow } from '@/lib/snapshot';
-import { awaitingAttendance, seatFee, timing } from '@/lib/sessions';
+import { courtStats, headCounts, lowPlans, openRequests, revenue } from '@/lib/stats';
+import { awaitingAttendance, getBatches, seatFee, timing } from '@/lib/sessions';
 import { dayOfWeek, fmtDate, fmtTime, istDate } from '@/lib/time';
 import { confirmSlot, markAttended, withdraw } from '../actions';
 
@@ -63,6 +64,7 @@ function Fill({ t, snap }: { t: T; snap: Snapshot }) {
   );
 }
 
+
 function People({ t, snap }: { t: T; snap: Snapshot }) {
   return (
     <div className="split people-split">
@@ -95,103 +97,108 @@ function People({ t, snap }: { t: T; snap: Snapshot }) {
 }
 
 // ---------- Staff dashboard ----------
+// Overall numbers only. Each session's own counts (coming, confirmed, fees) live on its card on the Roster:
+// two different sessions are never added together here.
 
-export async function StaffDashboard({ me, t, lang, upcoming }: { me: Player; t: T; lang: Lang; upcoming: Upcoming }) {
-  const panels = await Promise.all(upcoming.map(async ({ batch, session }) => ({
-    batch, session, snap: await snapshot(session, batch), history: await attendanceHistory(batch.id),
-  })));
-  const [counts] = await sql<{ pending: number; quoted: number; active: number; low: number; wallets: number; pins: number; signups: number }[]>`
-    select
-      (select count(*) from players where approved_at is null and deactivated_at is null)::int as signups,
-      (select count(*) from players where pin_reset_requested_at is not null and pin_hash is not null
-         and id <> ${me.id} and (role = 'player' or ${me.role} = 'admin'))::int as pins,
-      (select count(*) from membership_requests where status = 'pending')::int as pending,
-      (select count(*) from membership_requests where status = 'quoted')::int as quoted,
-      (select count(*) from memberships where status = 'active' and sessions_used < sessions_total
-         and (ends_on is null or ends_on >= ${istDate()}) and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as active,
-      (select count(*) from memberships where status = 'active' and sessions_total - sessions_used between 1 and 3 and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as low,
-      (select count(*) from memberships where status = 'active' and kind = 'wallet' and sessions_used < sessions_total and exists (select 1 from players p where p.id = player_id and p.deleted_at is null))::int as wallets`;
-  const low = await sql<{ name: string; remaining: number; batch_id: string | null; kind: string }[]>`
-    select p.name, m.sessions_total - m.sessions_used as remaining, m.batch_id, m.kind
-    from memberships m join players p on p.id = m.player_id
-    where m.status = 'active' and m.sessions_total - m.sessions_used between 1 and 3 and p.deleted_at is null
-    order by remaining, p.name limit 12`;
-  const requests = await sql<{ id: number; name: string; plan: string; status: string; sessions_requested: number | null }[]>`
-    select r.id, p.name, r.plan, r.status, r.sessions_requested from membership_requests r join players p on p.id = r.player_id
-    where r.status in ('pending', 'quoted') order by r.created_at limit 6`;
-  const sum = (f: (s: Snapshot) => number) => panels.reduce((n, p) => n + f(p.snap), 0);
-  const nameOf = (id: string | null) => id ? batchName(t, upcoming.find((u) => u.batch.id === id)?.batch ?? { id, label: id }) : t('wallet');
+const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const monthName = (ym: string, lang: Lang) =>
+  new Date(`${ym}-15T12:00:00Z`).toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { timeZone: 'UTC', month: 'short', year: 'numeric' });
+
+export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: Lang }) {
+  const [heads, req, money, court, low, batches] = await Promise.all([
+    headCounts(), openRequests(me), revenue(), courtStats(), lowPlans(), getBatches(),
+  ]);
+  const nameOf = (id: string | null) => {
+    const b = batches.find((x) => x.id === id);
+    return b ? batchName(t, b) : t('wallet');
+  };
+  const histories = await Promise.all(batches.map((b) => attendanceHistory(b.id)));
+  const maxMonth = Math.max(1, ...money.last6.map((m) => m.total));
 
   return (
     <>
-      <AutoRefresh />
+      <AutoRefresh seconds={60} />
       <div className="hero">
         <div>
           <div className="eyebrow">{t('navDashboard')}</div>
           <h1>{t('hi', { name: me.first_name })}</h1>
         </div>
-        <span className="pill ok live-dot">{t('liveNote')}</span>
-      </div>
-      <div className="tiles">
-        <Tile label={t('tileComing')} value={sum((s) => s.booked)} of={sum((s) => s.capacity)} tone="blue" />
-        <Tile label={t('tileConfirmed')} value={sum((s) => s.confirmed)} tone="ok" />
-        <Tile label={t('tilePending')} value={counts.pending} tone={counts.pending ? 'warn' : undefined} href="/members"
-          sub={counts.quoted ? t('awaitingPayment', { n: counts.quoted }) : undefined} />
-        <Tile label={t('tileActive')} value={counts.active} href="/members" sub={t('walletsCount', { n: counts.wallets })} />
-        <Tile label={t('lowPlans')} value={counts.low} tone={counts.low ? 'warn' : undefined} />
-        <Tile label={t('tileCollect')} value={`₹${sum((s) => s.toCollect)}`} tone={sum((s) => s.toCollect) ? 'warn' : 'ok'}
-          sub={sum((s) => s.toRefund) ? t('toRefund', { amount: sum((s) => s.toRefund) }) : undefined} />
+        <a className="btn btn-ghost btn-sm" href="/roster">{t('todaySessions')} →</a>
       </div>
 
-      <div className="cols">
-        {panels.map(({ batch, session, snap, history }) => (
-          <section key={session.id} className="card panel">
-            <SlotHead t={t} lang={lang} batch={batch} session={session} />
-            <Fill t={t} snap={snap} />
-            <div className="mini-tiles">
-              <div><b>{snap.members}</b><span>{t('tileMembers')}</span></div>
-              <div><b>{snap.floaters}</b><span>{t('tileFloaters')}</span></div>
-              <div><b>{snap.friends}</b><span>{t('tileFriends')}</span></div>
-              <div><b>{snap.withdrawn.length}</b><span>{t('tileNotComing')}</span></div>
-              <div><b>₹{snap.toCollect}</b><span>{t('tileCollect')}</span></div>
-            </div>
-            <CourtBoard capacity={snap.capacity} perCourt={batch.players_per_court} numbers={session.court_numbers} people={boardPeople(snap)} showNames labels={boardLabels(t)} />
-            <People t={t} snap={snap} />
-            <details className="card-nested">
-              <summary>{t('attendance')}</summary>
-              <AttendanceChart id={batch.id} data={history} lang={lang}
-                labels={{ showed: t('showed'), missed: t('missed'), table: t('tableView'), date: t('date'), empty: t('noHistory') }} />
-            </details>
-            <a className="btn btn-ghost full" href={`/roster?sid=${session.id}`}>{t('navRoster')} →</a>
-          </section>
-        ))}
+      <div className="tiles dash-tiles">
+        <Tile label={t('tilePlayers')} value={heads.players} href="/players"
+          sub={heads.new_month ? t('newThisMonth', { n: heads.new_month }) : undefined} />
+        <Tile label={t('navRequests')} value={req.total} tone={req.total ? 'warn' : undefined} href="/requests"
+          sub={req.total ? [req.signups && t('nSignups', { n: req.signups }), req.plans + req.quoted && t('nPlanRequests', { n: req.plans + req.quoted }), req.pins && t('nPinResets', { n: req.pins })].filter(Boolean).join(' · ') : t('nothingWaiting')} />
+        <Tile label={t('tileActive')} value={heads.members} tone="blue" href="/players?plan=member" sub={t('walletsCount', { n: heads.wallets })} />
+        <Tile label={t('lowPlans')} value={heads.low} tone={heads.low ? 'warn' : undefined} href="/players?plan=low" />
+        <Tile label={t('tileCore')} value={heads.core} href="/players?role=staff" sub={t('nAdmins', { n: heads.admins })} />
+        <Tile label={t('revenueMonth')} value={rupees(money.month.total)} tone="ok" sub={t('revenueYearSub', { amount: rupees(money.year.total) })} />
       </div>
 
       <div className="cols">
         <section className="card">
-          <h2>{t('requests')}</h2>
-          {counts.signups > 0 && <a className="status warn" href="/members">{t('signupsCount', { n: counts.signups })} →</a>}
-          {counts.pins > 0 && <a className="status warn" href="/members">{t('pinRequestsCount', { n: counts.pins })} →</a>}
-          {requests.length === 0 ? <p className="muted">{t('noRequests')}</p> : (
-            <ul className="list">
-              {requests.map((r) => (
-                <li key={r.id} className="spread">
-                  <span className="person"><span className="av member">{initials(r.name)}</span>
-                    <span className="pname">{r.name} <span className="muted">· {t(`plan_${r.plan}` as 'plan_month')}{r.sessions_requested ? ` · ${r.sessions_requested}` : ''}</span></span>
-                  </span>
-                  <span className={`pill ${r.status === 'quoted' ? 'blue' : 'warn'}`}>{t(r.status === 'quoted' ? 'reqQuoted' : 'reqPending')}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <a className="btn btn-ghost btn-sm" href="/members">{t('navMembers')} →</a>
+          <h2>{t('moneyTitle')}</h2>
+          <div className="money-grid">
+            {([['revenueMonth', money.month], ['revenueYear', money.year], ['revenueAll', money.all]] as const).map(([k, m]) => (
+              <div key={k}>
+                <span className="label">{t(k)}</span>
+                <b>{rupees(m.total)}</b>
+                <small>{t('plansAndFees', { plans: rupees(m.plans), fees: rupees(m.fees) })}</small>
+              </div>
+            ))}
+          </div>
+          <h3>{t('byMonth')}</h3>
+          <ul className="month-list">
+            {money.last6.map((m) => (
+              <li key={m.ym}>
+                <span>{monthName(m.ym, lang)}</span>
+                <span className="month-bar" aria-hidden><i style={{ width: `${(m.total / maxMonth) * 100}%` }} /></span>
+                <b>{rupees(m.total)}</b>
+              </li>
+            ))}
+          </ul>
+          <div className="member-meta" style={{ marginTop: 12 }}>
+            <span className={`pill ${money.toCollect ? 'warn' : ''}`}>{t('feesToCollect', { amount: rupees(money.toCollect) })}</span>
+            {money.toRefund > 0 && <span className="pill bad">{t('toRefund', { amount: rupees(money.toRefund) })}</span>}
+            <span className="pill">{t('freeSessionsMonth', { n: money.freeSessions })}</span>
+          </div>
+          <p className="hint">{t('moneyHint')}</p>
         </section>
+
+        <section className="card">
+          <h2>{t('courtTitle')}</h2>
+          <p className="muted">{t('courtHint')}</p>
+          {batches.map((b, i) => {
+            const c = court.find((x) => x.batch_id === b.id);
+            const played = (c?.members ?? 0) + (c?.floaters ?? 0);
+            return (
+              <div key={b.id} className="batch-stats">
+                <div className="spread"><b>{batchName(t, b)}</b><span className="muted">{t('nSessionsHeld', { n: c?.sessions ?? 0 })}</span></div>
+                <div className="mini-tiles">
+                  <div><b>{c?.sessions ? Math.round((c.seats / c.sessions) * 10) / 10 : 0}</b><span>{t('avgPlayers')}</span></div>
+                  <div><b>{c?.members ?? 0}</b><span>{t('tileMembers')}</span></div>
+                  <div><b>{c?.floaters ?? 0}</b><span>{t('tileFloaters')}</span></div>
+                  <div><b>{played + (c?.no_shows ?? 0) ? Math.round(((c?.no_shows ?? 0) / (played + c!.no_shows)) * 100) : 0}%</b><span>{t('noShowRate')}</span></div>
+                  <div><b>{c?.cancelled ?? 0}</b><span>{t('cancelled')}</span></div>
+                </div>
+                <details className="card-nested">
+                  <summary>{t('attendance')}</summary>
+                  <AttendanceChart id={b.id} data={histories[i]} lang={lang}
+                    labels={{ showed: t('showed'), missed: t('missed'), table: t('tableView'), date: t('date'), empty: t('noHistory') }} />
+                </details>
+              </div>
+            );
+          })}
+        </section>
+
         <section className="card">
           <h2>{t('lowPlans')}</h2>
           {low.length === 0 ? <p className="muted">{t('noLowPlans')}</p> : (
             <div className="people">
-              {low.map((l, i) => (
-                <div key={i} className="person">
+              {low.map((l) => (
+                <div key={l.id} className="person">
                   <span className="av member">{initials(l.name)}</span>
                   <span className="pname">{l.name} <span className="muted">· {l.kind === 'wallet' ? t('wallet') : nameOf(l.batch_id)} · {t('left', { n: l.remaining })}</span></span>
                 </div>

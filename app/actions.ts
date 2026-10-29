@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { GENDERS, SKILL_LEVELS, sql, type Booking, type Gender, type Lang, type Membership, type Player, type SkillLevel } from '@/lib/db';
 import { back, email, int, personName, safePath, str, withLockedSession } from '@/lib/action-utils';
 import {
-  claim, currentPlayer, getLang, hashPin, LANGS, lockStaff, normalizePhone, pinProblem,
-  requirePlayer, setLangCookie, signIn, signOut, verifyPin, viewer, isStaff,
+  claim, currentPlayer, getLang, hashPin, LANGS, normalizePhone, pinProblem,
+  requirePlayer, setLangCookie, signIn, verifyPin, viewer, isStaff,
 } from '@/lib/auth';
 import { clear, clientIp, hit } from '@/lib/ratelimit';
 import { activePlan, bookable, chargeBookings, covers, planBlocks, planLive, reservedSessions } from '@/lib/members';
@@ -79,16 +79,6 @@ export async function updateName(form: FormData) {
   if (!name) return back('/', 'errName');
   await sql`update players set first_name = ${name.first}, last_name = ${name.last} where id = ${me.id}`;
   return back('/', 'nameSaved');
-}
-
-export async function leave() {
-  await signOut();
-  redirect('/');
-}
-
-export async function lock() {
-  await lockStaff();
-  redirect('/');
 }
 
 /** First sign-in, or the PIN was reset by core/admin: choose a new PIN. */

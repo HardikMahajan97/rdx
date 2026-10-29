@@ -27,12 +27,14 @@ This file holds the intent and the decisions made so far, so future work doesn't
 | `app/page.tsx` | Sign-in and register screens, PIN screens, player home, staff dashboard entry |
 | `app/actions.ts` | Player actions: `join`, `register`, `setPin`, `enterPin`, `forgotPin`, `book`, `withdraw`, `confirmSlot`, `markAttended`, `applyMembership`, `updateName`, … |
 | `app/staff-actions.ts` | Staff actions: `togglePaid`, `setBookingStatus`, `changeCourts`, `cancelSession`, `quoteRequest`, `savePlan`, `endPlan`, `addPlayer`, `approveSignup`, `rejectSignup`, `resetPin`, `resetPinByPhone`, `dismissPinRequest`, `saveStaff`, `removeStaff`, `deactivatePlayer`, `reactivatePlayer`, `deletePlayer`, `restorePlayer`, `saveBatch` |
-| `app/roster`, `app/members`, `app/players`, `app/admin` | Staff pages. `/players` is the one full player list: filters in the URL (GET form), status chips with counts, 20 per page |
+| `app/roster`, `app/members`, `app/players`, `app/requests`, `app/admin` | Staff pages. `/requests` holds everything waiting for approval (sign-ups, plan requests, PIN resets); the nav's Requests tab shows the total as a red bubble. `/players` is the one full player list: filters in the URL (GET form), status chips with counts, 20 per page |
 | `app/ui/` | `Views.tsx` (dashboard, player sessions, `SlotAction`), `Shared.tsx` (`SlotHead`, `Loader`, `Rally`, `Tile`), `PlanForm`, `ApplyForm`, `CourtBoard`, `Client.tsx` (`Submit`, `AutoRefresh`, `Toast`) |
 | `lib/auth.ts`, `lib/staff-token.ts` | Cookies, PINs, roles and permissions |
 | `lib/sessions.ts` | Slot timing, phases, the sweep (lock and close), `staffStatuses`, `seatFee` |
 | `lib/members.ts` | Plans: `covers`, `planBlocks`, `reservedSessions`, `chargeBookings`, `refundBookings`, `recheckBookings`, `assignPlan`, `ledger` |
 | `lib/snapshot.ts` | Per-session roster numbers (dues, refunds, totals) |
+| `lib/stats.ts` | Dashboard numbers: `openRequests`, `revenue`, `headCounts`, `courtStats`, `lowPlans` |
+| `app/logout/route.ts` | `POST /logout`: deletes every RDx cookie and sends `Clear-Site-Data` |
 | `lib/i18n.ts` | en/mr/hi dictionaries. The `Dict` type forces every key into all three languages. |
 | `db/schema.sql` | Idempotent schema plus an **upgrade section** for older databases |
 | `scripts/` | `setup.mjs`, `check-db.mjs` (read-only), `setup-local.sh`, `neon-to-local.sh`, `lib.sh`, `migrate.mjs` (**broken**; see Open items) |
@@ -60,7 +62,11 @@ This file holds the intent and the decisions made so far, so future work doesn't
   - Their plan is kept. Reactivating restores access with the same PIN.
 - **Delete (soft, admin only, players only):** `deleted_at` / `deleted_by`. Deleting also deactivates and does the same clean-up. A deleted player is hidden from every list and count (Players, Members, the dashboard, sign-ups, PIN requests); past sessions, payments and the plan ledger are kept. Signing in, registering, adding, giving a plan to, or promoting that number is refused (`accountDeleted`, `errPlayerDeleted`). Admins see them under Players → Deleted and can **Restore**, which brings them back still deactivated; then Reactivate.
 - **Players page (`/players`, core and admin):** search (name, number, email) and filters for account status, plan (members, floaters, fixed, wallet, low, used up, never), plan batch, skill, gender, last played, account type and registration dates, plus sort. Actions there come back to the same filters (`back`). The admin page only shows the headline counts and links to it.
-- **Staff nav on phones** (≤480 px) is a 3-column grid (Dashboard, Roster, Members / Players, Admin, Lock), so labels never get cut off.
+- **Staff nav on phones** (≤480 px) is a 3-column grid (Dashboard, Roster, Members / Players, Requests, Admin), so labels never get cut off. There is no Lock button any more (staff still re-enter the PIN after 20 min idle).
+- **Log out** is at the top right of every page, for everyone (players, core, admin), next to Home. It's a plain form posting to `/logout`, which deletes all RDx cookies and sends `Clear-Site-Data: "cookies", "storage"`, so the intro video plays again on that phone. It then lands on the promo home (Log in / Register). The PIN screen's "Not you?" button posts there too. Under 360 px the top bar hides the small logo image so the name, Home and Log out fit.
+- **Dashboard = overall numbers only** (the owner's list): total players, requests, active members, plans running low, core members, and money (this month, this year, all time, plus the last six months). Below that: fees still to collect and to refund, free sessions given, the last 30 days on court **for each batch separately**, and plans running low. **Never add two sessions or two batches together** (e.g. today's evening + tomorrow's morning). Per-session coming / confirmed / fees belong on the Roster.
+- **Players page → "Make a member"** for anyone without a running plan: the plan form with their number already filled in.
+- `lib/db.ts` uses `prepare: false`: Neon's pooler kept queries prepared before a schema change, and `select *` then failed with "cached plan must not change result type" until the connections were recycled.
 - **Names:** `first_name` and `last_name` are stored, and `players.name` is a **generated column** (first + last, hiding the `'x'` filler used for older accounts). Never write to `name`. Players can edit their name from their home screen.
 - **Roles:** `player`, `core` (roster, members, pins) and `admin` (everything, plus staff, batches and cancelling sessions). Staff don't book slots; they get the dashboard.
 
@@ -80,11 +86,17 @@ This file holds the intent and the decisions made so far, so future work doesn't
 
 ## Plans and money (decided)
 
-- **Fixed plans** cover one batch and its days (all days, weekdays, weekends or custom). Members can **only vote for their own batch on their own days** (`planBlocks`).
+- **Fixed plans** cover one batch and its days (all days, weekdays, weekends or custom). Members can **only vote for their own batch on their own days** (`planBlocks`). This applies from the moment the plan exists, **also before its start date** (the owner reported a morning member voting for evening before his plan began). Before the start date, their own-batch sessions are paid like a floater's.
 - **Wallet plans** are a balance of sessions usable in any batch on any day. A request goes **pending → quoted** (staff send the amount; the player sees "pay ₹X") **→ activated** (payment is collected offline). Live wallets can be topped up.
 - Booking is limited so a plan can't be over-booked against its balance (`reservedSessions`, `bookable`).
 - **Every balance change is written to `plan_ledger`** (`activate`, `topup`, `use`, `refund`, `adjust`) and shown as each member's history.
 - Friends (guests) always pay the fee.
+- **A collected fee is stored when staff mark it paid** (`bookings.paid_rupees`), so a later price change can't rewrite past revenue. Refunding clears it.
+- **Revenue (dashboard, `revenue()` in `lib/stats.ts`)**, by IST month and year:
+  - **counts:** each plan's amount paid (`memberships.amount_rupees`, in the month it was activated; amount corrections made by editing the plan are already in it), every wallet top-up amount, and every session fee marked paid;
+  - **drops out:** a refunded fee (no longer marked paid);
+  - **adds nothing:** free sessions (an `adjust` with no money) and plan sessions used or given back.
+  - Editing a plan's amount also writes an `adjust` ledger line carrying the money difference, for the history. Revenue doesn't read those lines, because the plan's amount already includes the correction.
 - **Batch prices are per hour** (admin → batches, "Fee per hour"); a seat costs that × the session length (`seatFee`). Batches are 60 minutes today, so the price per session is the same.
 - Admin batch settings: the exact **court numbers** (e.g. morning `1, 2`, evening `4, 5, 6`), players per court, fee per hour. `batches.court_numbers` / `sessions.court_numbers` hold them; `courts` is just their count. A new session copies its batch's courts. On the roster, staff **add a court by entering its number** (`addCourt`) or remove one (`removeCourt`); each adds or removes one court's seats. Players see the court numbers on each session card and on the court board.
 

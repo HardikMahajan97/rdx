@@ -21,6 +21,8 @@ const PROMO: Record<string, string> = {
 /** A "Join / Log in" button sends people to `/?app=1`; this cookie keeps them in the app for a while after (the ?msg notices drop the query). */
 const APP_COOKIE = 'rdx-app';
 const APP_COOKIE_SECONDS = 30 * 60;
+/** Readable by the promo pages' script: "someone is signed in here" (no identity in it). */
+const SIGNED_IN_COOKIE = 'rdx-in';
 
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
@@ -45,6 +47,14 @@ export function proxy(request: NextRequest) {
     else if (searchParams.has('app')) {
       response.cookies.set(APP_COOKIE, '1', { maxAge: APP_COOKIE_SECONDS, path: '/', sameSite: 'lax', secure: request.nextUrl.protocol === 'https:' });
     }
+  }
+
+  // The promo pages are static files, so they can't read the (httpOnly) sign-in cookie. This small readable
+  // marker tells them someone is signed in on this browser: they then show Log out instead of Log in / Register.
+  if (jar.has('pid') && !jar.has(SIGNED_IN_COOKIE)) {
+    response.cookies.set(SIGNED_IN_COOKIE, '1', { path: '/', sameSite: 'lax', secure: request.nextUrl.protocol === 'https:', maxAge: 400 * 24 * 3600 });
+  } else if (!jar.has('pid') && jar.has(SIGNED_IN_COOKIE)) {
+    response.cookies.delete(SIGNED_IN_COOKIE);
   }
 
   // Slides the staff idle timeout forward on every page view, so the PIN is only asked again after inactivity.

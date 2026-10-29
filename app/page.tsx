@@ -4,10 +4,10 @@ import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
 import { planLive } from '@/lib/members';
 import { upcomingSessions } from '@/lib/sessions';
-import { cancelRequest, enterPin, forgotPin, join, leave, setPin, updateName } from './actions';
+import { cancelRequest, enterPin, forgotPin, join, setPin, updateName } from './actions';
 import { ApplyForm } from './ui/ApplyForm';
 import { Submit } from './ui/Client';
-import { Loader, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
+import { Loader, LogoutButton, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
 import { AttendancePrompts, PlanCard, PlayerSessions, StaffDashboard } from './ui/Views';
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
@@ -81,7 +81,7 @@ async function HomeContent({ searchParams }: Props) {
         {gate === 'enter' && (me.pin_reset_requested_at
           ? <div className="status warn">{t('pinRequestPending')}</div>
           : <form action={forgotPin}><Submit className="btn-ghost btn-sm">{t('forgotPin')}</Submit></form>)}
-        <form action={leave}><button className="btn-ghost btn-sm">{t('switchUser', { name: me.first_name })}</button></form>
+        <LogoutButton className="btn-ghost btn-sm" label={t('switchUser', { name: me.first_name })} />
       </div>
     );
   }
@@ -90,7 +90,7 @@ async function HomeContent({ searchParams }: Props) {
 
   // Admin and core members run the sessions; they get the dashboard, not booking.
   if (isStaff(me.role)) {
-    return <>{top}<StaffDashboard me={me} t={t} lang={lang} upcoming={upcoming} /></>;
+    return <>{top}<StaffDashboard me={me} t={t} lang={lang} /></>;
   }
 
   const [active] = await sql<Membership[]>`select * from memberships where player_id = ${me.id} and status = 'active'`;
@@ -156,9 +156,6 @@ async function HomeContent({ searchParams }: Props) {
           <Submit className="btn-primary">{t('saveName')}</Submit>
         </form>
       </details>
-      <form action={leave} className="switch-user">
-        <button className="btn-ghost btn-sm">{t('switchUser', { name: first })}</button>
-      </form>
     </>
   );
 }

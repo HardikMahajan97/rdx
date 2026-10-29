@@ -15,11 +15,12 @@ export const covers = (m: Membership | null | undefined, s: Pick<Session, 'batch
   (m.kind === 'wallet' || (m.batch_id === s.batch_id && m.days.includes(dayOfWeek(s.date))));
 
 /**
- * Fixed-plan members can only vote for their own batch on their own days.
- * Before the plan starts, or once it has run out, they book like anyone else.
+ * Fixed-plan members can only vote for their own batch on their own days, from the moment the plan is set up
+ * (also before its start date: then those sessions are paid like a floater's). Once it has run out or ended,
+ * they book like anyone else.
  */
 export const planBlocks = (m: Membership | null | undefined, s: Pick<Session, 'batch_id' | 'date'>) =>
-  !!m && m.kind === 'fixed' && planLive(m, s.date) && m.starts_on <= s.date && !covers(m, s);
+  !!m && m.kind === 'fixed' && planLive(m, s.date) && !(m.batch_id === s.batch_id && m.days.includes(dayOfWeek(s.date)));
 
 export async function activePlan(playerId: number) {
   const [m] = await sql<Membership[]>`select * from memberships where player_id = ${playerId} and status = 'active'`;

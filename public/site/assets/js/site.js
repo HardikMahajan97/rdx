@@ -380,9 +380,29 @@ function guide() {
   playOnce(box, (k) => { p = k; update(k); }, 3400);
 }
 
+/**
+ * Signed in on this browser (the server keeps a small `rdx-in` marker cookie in step with the sign-in): no Log in,
+ * Register or Join buttons. The header gets Log out instead, and the page's own Register buttons open the app.
+ */
+function signedInView() {
+  if (!/(?:^|;\s*)rdx-in=1(?:;|$)/.test(document.cookie)) return;
+  document.documentElement.classList.add('signed-in');
+  const top = $('.top');
+  top.querySelectorAll(':scope > [data-app]').forEach((a) => a.remove());
+  top.append(h('form', { class: 'logout-form', action: '/logout', method: 'post' },
+    h('button', { class: 'btn btn-ghost btn-sm' }, 'Log out')));
+  document.querySelectorAll('[data-app]').forEach((a) => {
+    if (a.closest('.dock') || a.closest('.foot')) a.remove();
+    else if (a.dataset.app === 'register') { a.textContent = 'Open the app'; a.href = '/'; delete a.dataset.app; }
+    else a.remove();
+  });
+  $('#dock')?.remove();
+}
+
 /** Phones: a Register bar that hides while the page's own Register buttons, the hero or the footer are on screen. */
 function dock() {
   const bar = $('#dock');
+  if (!bar) return; // signed in: no Register bar
   const hide = [...document.querySelectorAll('[data-hide-dock]')];
   const seen = new Map();
   const set = () => {
@@ -436,6 +456,7 @@ function intro() {
 
 intro();
 wireAppLinks();
+signedInView();
 renderBasics();
 renderAbout();
 navScroll();

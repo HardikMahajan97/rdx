@@ -22,9 +22,14 @@ const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 export async function togglePaid(form: FormData) {
   await requireStaff('roster');
   const sid = int(form, 'sessionId');
+  const paid = int(form, 'paid') === 1;
+  // The amount is fixed now (seat unless the plan covers it, plus friends, at this batch's price), so revenue
+  // stays right if the price changes later. Refunding (paid → no) clears it.
   await sql`
-    update bookings set paid = ${int(form, 'paid') === 1}, updated_at = now()
-    where id = ${int(form, 'bookingId')} and session_id = ${sid}`;
+    update bookings b set paid = ${paid}, updated_at = now(),
+      paid_rupees = case when ${paid} then ((b.membership_id is null)::int + b.guests) * round(bt.price_rupees * bt.duration_min / 60.0) end
+    from sessions s join batches bt on bt.id = s.batch_id
+    where b.id = ${int(form, 'bookingId')} and b.session_id = ${sid} and s.id = b.session_id`;
   refresh(); // re-render the roster in place, no navigation or scroll jump
 }
 
@@ -151,8 +156,8 @@ export async function approveSignup(form: FormData) {
     update players set approved_at = now(), approved_by = ${staff.id}
     where id = ${int(form, 'id')} and approved_at is null and deactivated_at is null returning *`;
   // Lost the race: another staff member approved or rejected this person first.
-  if (!p) back('/members', 'alreadyHandled');
-  back('/members', 'playerApproved', { name: p.name });
+  if (!p) back('/requests', 'alreadyHandled');
+  back('/requests', 'playerApproved', { name: p.name });
 }
 
 /** Turn a sign-up down. The request is removed; the number can ask again later. */
@@ -164,8 +169,8 @@ export async function rejectSignup(form: FormData) {
       and not exists (select 1 from memberships m where m.player_id = p.id)
       and not exists (select 1 from membership_requests r where r.player_id = p.id)
     returning *`;
-  if (!p) back('/members', 'alreadyHandled');
-  back('/members', 'signupRejected', { name: p.name });
+  if (!p) back('/requests', 'alreadyHandled');
+  back('/requests', 'signupRejected', { name: p.name });
 }
 
 // ---------- Memberships ----------
@@ -174,14 +179,14 @@ export async function rejectSignup(form: FormData) {
 export async function quoteRequest(form: FormData) {
   const staff = await requireStaff('members');
   const amount = Math.max(0, int(form, 'amount'));
-  if (amount < 1) back('/members', 'errAmount');
+  if (amount < 1) back('/requests', 'errAmount');
   const sessions = Math.min(400, Math.max(0, int(form, 'sessions'))) || null;
   const [r] = await sql<{ name: string }[]>`
     update membership_requests r set status = 'quoted', amount_rupees = ${amount},
       sessions_requested = coalesce(${sessions}, r.sessions_requested), handled_by = ${staff.id}, handled_at = now()
     from players p where r.id = ${int(form, 'requestId')} and p.id = r.player_id and r.status in ('pending', 'quoted')
     returning p.name`;
-  back('/members', r ? 'quoteSent' : 'alreadyHandled', { name: r?.name ?? '', amount });
+  back('/requests', r ? 'quoteSent' : 'alreadyHandled', { name: r?.name ?? '', amount });
 }
 
 /**
@@ -190,6 +195,7 @@ export async function quoteRequest(form: FormData) {
  */
 export async function savePlan(form: FormData) {
   const staff = await requireStaff('members');
+  const to = safePath(str(form, 'back') || '/members'); // Members, Requests or Players
   const planId = int(form, 'planId');
   const requestId = int(form, 'requestId');
   const kind: PlanType = str(form, 'kind') === 'wallet' ? 'wallet' : 'fixed';
@@ -201,10 +207,10 @@ export async function savePlan(form: FormData) {
   const batchId = kind === 'wallet' ? null : str(form, 'batchId');
   const note = str(form, 'note').slice(0, 200) || null;
   const amount = Math.max(0, int(form, 'amount')) || null;
-  if (batchId !== null && !(await getBatch(batchId))) back('/members', 'errSessions');
-  if (days.length === 0) back('/members', 'errDays');
-  if (total < 1) back('/members', 'errSessions');
-  if (endsOn && startsOn > endsOn) back('/members', 'errDateRange');
+  if (batchId !== null && !(await getBatch(batchId))) back(to, 'errSessions');
+  if (days.length === 0) back(to, 'errDays');
+  if (total < 1) back(to, 'errSessions');
+  if (endsOn && startsOn > endsOn) back(to, 'errDateRange');
 
   const [key, vars] = await sql.begin(async (tx): Promise<[Key, Record<string, string | number>?]> => {
     // Edit
@@ -217,8 +223,11 @@ export async function savePlan(form: FormData) {
           ends_on = ${endsOn}, sessions_total = ${newTotal}, note = ${note}, amount_rupees = coalesce(${amount}, m.amount_rupees)
         from players p where m.id = ${planId} and p.id = m.player_id
         returning m.*, p.name`;
-      if (newTotal !== old.sessions_total) {
-        await ledger(tx, { membershipId: m.id, delta: newTotal - old.sessions_total, reason: 'adjust', note, by: staff.id });
+      // Sessions added or taken off, and/or the amount paid corrected: one history line, so the balance and the
+      // money can both be explained later. Extra sessions with no money are free sessions given by staff.
+      const moneyChange = amount !== null && amount !== old.amount_rupees ? amount - (old.amount_rupees ?? 0) : null;
+      if (newTotal !== old.sessions_total || moneyChange !== null) {
+        await ledger(tx, { membershipId: m.id, delta: newTotal - old.sessions_total, reason: 'adjust', amount: moneyChange, note, by: staff.id });
       }
       await recheckBookings(tx, m.player_id);
       return ['planSaved', { name: m.name }];
@@ -281,7 +290,7 @@ export async function savePlan(form: FormData) {
     await recheckBookings(tx, player.id);
     return result;
   });
-  back('/members', key, vars);
+  back(to, key, vars);
 }
 
 /**
@@ -312,7 +321,7 @@ export async function rejectRequest(form: FormData) {
   const done = await sql`
     update membership_requests set status = 'rejected', handled_by = ${staff.id}, handled_at = now()
     where id = ${int(form, 'requestId')} and status in ('pending', 'quoted') returning id`;
-  back('/members', done.length ? 'requestRejected' : 'alreadyHandled');
+  back('/requests', done.length ? 'requestRejected' : 'alreadyHandled');
 }
 
 // ---------- Admin ----------
@@ -375,7 +384,7 @@ export async function dismissPinRequest(form: FormData) {
   if (target && canResetPin(staff, target)) {
     await sql`update players set pin_reset_requested_at = null where id = ${target.id}`;
   }
-  back('/members', 'pinRequestDismissed');
+  back('/requests', 'pinRequestDismissed');
 }
 
 /**

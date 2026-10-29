@@ -135,17 +135,6 @@ export async function signIn(player: Player & { pin_hash: string }) {
   if (isStaff(player.role)) jar.set(STAFF_COOKIE, makeStaffToken(player.id, pinVersion(player.pin_hash)), staffCookieOptions);
 }
 
-export async function signOut() {
-  const jar = await cookies();
-  jar.delete(PLAYER_COOKIE);
-  jar.delete(STAFF_COOKIE);
-  jar.delete(CLAIM_COOKIE);
-}
-
-export async function lockStaff() {
-  (await cookies()).delete(STAFF_COOKIE);
-}
-
 /** For player actions: signed in, and staff accounts must be unlocked too. */
 export async function requirePlayer(): Promise<Player> {
   const { player, gate } = await viewer();

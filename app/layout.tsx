@@ -2,6 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { Anek_Devanagari, Mukta } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
+import { Suspense } from 'react';
+import { cookies } from 'next/headers';
+import { getLang } from '@/lib/auth';
+import { translator } from '@/lib/i18n';
+import { LogoutButton } from './ui/Shared';
 import './globals.css';
 
 // Both families cover Latin and Devanagari, so Marathi and Hindi render in the same style.
@@ -29,15 +34,25 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <span className="brand-text">RDx BADDY GROUP</span>
           </Link>
           {/* Plain link on purpose: `/?home` is answered by the proxy with the promo pages, not by the app router. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a className="home-link" href="/?home">
-            <svg viewBox="0 0 24 24" aria-hidden><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
-            Home
-          </a>
+          <span className="top-actions">
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a className="home-link" href="/?home" aria-label="Home">
+              <svg viewBox="0 0 24 24" aria-hidden><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
+              <span className="home-text">Home</span>
+            </a>
+            {/* Signed in (or half-way through signing in): Log out, top right, on every page. */}
+            <Suspense fallback={null}><AccountButton /></Suspense>
+          </span>
         </header>
         <main>{children}</main>
         <Analytics />
       </body>
     </html>
   );
+}
+
+async function AccountButton() {
+  const jar = await cookies();
+  if (!jar.has('pid') && !jar.has('claim')) return null;
+  return <LogoutButton className="top-logout" label={translator(await getLang())('logout')} />;
 }

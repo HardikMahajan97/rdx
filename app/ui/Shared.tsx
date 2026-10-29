@@ -3,7 +3,8 @@ import { can } from '@/lib/auth';
 import { batchName, isKey, langName, type T } from '@/lib/i18n';
 import { timing } from '@/lib/sessions';
 import { dateParts, fmtDate, fmtTime, istDate } from '@/lib/time';
-import { lock, setLang } from '../actions';
+import { setLang } from '../actions';
+import { openRequests } from '@/lib/stats';
 import { Toast } from './Client';
 
 const LANGS: Lang[] = ['en', 'mr', 'hi'];
@@ -31,24 +32,39 @@ export function Msg({ t, msg, mv }: { t: T; msg?: string; mv?: string }) {
   return <Toast key={msg + (mv ?? '')}>{t(msg, vars)}</Toast>;
 }
 
-export function StaffNav({ me, t, here }: { me: Player; t: T; here: string }) {
+export async function StaffNav({ me, t, here }: { me: Player; t: T; here: string }) {
+  const waiting = can(me.role, 'members') ? (await openRequests(me)).total : 0;
   const links = [
     { href: '/', label: t('navDashboard'), show: true },
     { href: '/roster', label: t('navRoster'), show: can(me.role, 'roster') },
     { href: '/members', label: t('navMembers'), show: can(me.role, 'members') },
     { href: '/players', label: t('navPlayers'), show: can(me.role, 'members') },
+    { href: '/requests', label: t('navRequests'), show: can(me.role, 'members'), badge: waiting },
     { href: '/admin', label: t('navAdmin'), show: can(me.role, 'staff') },
   ].filter((l) => l.show);
   return (
     <nav className="tabs">
-      {links.map((l) => <a key={l.href} href={l.href} className={here === l.href ? 'on' : ''}>{l.label}</a>)}
-      <form action={lock}><button className="btn-ghost lock-btn" aria-label={t('lock')}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-          <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" />
-        </svg>
-        <span>{t('lock')}</span>
-      </button></form>
+      {links.map((l) => (
+        <a key={l.href} href={l.href} className={here === l.href ? 'on' : ''}>
+          {l.label}
+          {l.badge ? <span className="badge" aria-label={t('nWaiting', { n: l.badge })}>{l.badge}</span> : null}
+        </a>
+      ))}
     </nav>
+  );
+}
+
+/** Log out: one plain form posting to /logout, which clears the browser's session for this site. */
+export function LogoutButton({ label, className = '' }: { label: string; className?: string }) {
+  return (
+    <form action="/logout" method="post" className="logout-form">
+      <button className={`logout-btn ${className}`}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" /><path d="M10 17l-5-5 5-5" /><path d="M5 12h11" />
+        </svg>
+        <span>{label}</span>
+      </button>
+    </form>
   );
 }
 

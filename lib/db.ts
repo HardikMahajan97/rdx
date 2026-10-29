@@ -106,4 +106,6 @@ export type Booking = {
   membership_id: number | null;
   charged: boolean;
   paid: boolean;
+  /** The fee collected, fixed when staff marked it paid. */
+  paid_rupees: number | null;
 };

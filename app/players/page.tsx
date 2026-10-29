@@ -4,8 +4,11 @@ import { can, canResetPin, requireStaff } from '@/lib/auth';
 import { batchName, daysLabel, translator, type Key, type T } from '@/lib/i18n';
 import { getBatches } from '@/lib/sessions';
 import { fmtDate, istDate } from '@/lib/time';
+import { ALL_DAYS } from '@/lib/members';
 import { deactivatePlayer, deletePlayer, reactivatePlayer, resetPin, restorePlayer } from '../staff-actions';
 import { Submit } from '../ui/Client';
+import { PlanForm } from '../ui/PlanForm';
+import { dayNames, planLabels } from '../ui/plan-labels';
 import { initials, Msg, Skeleton, Toolbar } from '../ui/Shared';
 
 // Every player in one place, with filters. Filters live in the URL (a plain GET form), so a filtered view can be
@@ -161,6 +164,7 @@ async function PlayersContent({ searchParams }: Props) {
     const b = batches.find((x) => x.id === id);
     return b ? batchName(t, b) : t('wallet');
   };
+  const batchOpts = batches.map((b) => ({ id: b.id, name: batchName(t, b) }));
   const nFilters = [f.q, f.plan, f.batch, f.skill, f.gender, f.role, f.from || f.to, f.played].filter(Boolean).length;
 
   return (
@@ -253,7 +257,7 @@ async function PlayersContent({ searchParams }: Props) {
             <p className="muted">{t('showingRange', { from: (page - 1) * PER_PAGE + 1, to: (page - 1) * PER_PAGE + rows.length, n: total })}</p>
             <ul className="list player-list">
               {rows.map((p) => (
-                <PlayerRow key={p.id} p={p} t={t} lang={me.lang} nameOf={nameOf} back={here}
+                <PlayerRow key={p.id} p={p} t={t} lang={me.lang} nameOf={nameOf} back={here} batchOpts={batchOpts}
                   admin={admin && p.role === 'player' && p.id !== me.id} canReset={canResetPin(me, p)} />
               ))}
             </ul>
@@ -277,9 +281,12 @@ const longDate = (d: Date | string, lang: Lang) =>
     timeZone: typeof d === 'string' ? 'UTC' : 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric',
   });
 
-function PlayerRow({ p, t, lang, nameOf, back, admin, canReset }: {
-  p: Row; t: T; lang: Lang; nameOf: (id: string | null) => string; back: string; admin: boolean; canReset: boolean;
+function PlayerRow({ p, t, lang, nameOf, back, batchOpts, admin, canReset }: {
+  p: Row; t: T; lang: Lang; nameOf: (id: string | null) => string; back: string; batchOpts: { id: string; name: string }[];
+  admin: boolean; canReset: boolean;
 }) {
+  // Floaters (no running plan) can be made a member right here: their number is already known.
+  const canMakeMember = !p.live && p.role === 'player' && !!p.approved_at && !p.deactivated_at && !p.deleted_at;
   const left = p.plan_id ? p.sessions_total! - p.sessions_used! : 0;
   const state: [Key, string] | null =
     p.deleted_at ? ['pst_deleted', 'bad']
@@ -348,6 +355,14 @@ function PlayerRow({ p, t, lang, nameOf, back, admin, canReset }: {
             <form action={restorePlayer}>{hidden}<Submit className="btn-sm btn-ok">{t('restore')}</Submit></form>
           )}
         </div>
+        {canMakeMember && (
+          <details className="status-edit make-member">
+            <summary>＋ {t('makeMember')}</summary>
+            <p className="muted">{t('makeMemberHint', { name: p.first_name })}</p>
+            <PlanForm batches={batchOpts} back={back} labels={planLabels(t, 'activate')} dayNames={dayNames(t)}
+              defaults={{ phone: p.phone, kind: 'fixed', batchId: batchOpts[0]?.id ?? null, days: ALL_DAYS, startsOn: istDate() }} />
+          </details>
+        )}
         {admin && p.deleted_at && <p className="hint">{t('restoreHint')}</p>}
         {admin && !p.deactivated_at && (
           <details className="status-edit">

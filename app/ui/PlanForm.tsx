@@ -34,8 +34,10 @@ export type PlanDefaults = {
   sessionsTotal?: number; startsOn: string; endsOn?: string | null; note?: string | null; amount?: number | null;
 };
 
-export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames }: {
+export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames, back }: {
   batches: { id: string; name: string }[];
+  /** Page to come back to after saving (default: Members). */
+  back?: string;
   defaults: PlanDefaults;
   withPhone?: boolean;
   /** Activating adds to the player's live wallet instead of creating a plan. */
@@ -80,6 +82,7 @@ export function PlanForm({ batches, defaults, withPhone, topUp, labels, dayNames
       {defaults.planId && <input type="hidden" name="planId" value={defaults.planId} />}
       {defaults.requestId && <input type="hidden" name="requestId" value={defaults.requestId} />}
       {defaults.phone && <input type="hidden" name="phone" value={defaults.phone} />}
+      {back && <input type="hidden" name="back" value={back} />}
       <input type="hidden" name="kind" value={wallet ? 'wallet' : 'fixed'} />
       {!wallet && days.map((d) => <input key={d} type="hidden" name="days" value={d} />)}
       {withPhone && (
