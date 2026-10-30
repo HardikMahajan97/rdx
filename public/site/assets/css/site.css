@@ -442,3 +442,6 @@ html.intro { overflow: hidden; }
 .contact-list dt:first-child { margin-top: 0; }
 .contact-list dd { margin: 0; line-height: 1.9; }
 .contact-list + h2 { margin-top: 40px; }
+/* More than one hall: each hall heads its own group of batches */
+.sessions-text .venue-row { list-style: none; margin-top: 22px; }
+.sessions-text .venue-row .venue-line { margin: 0; }

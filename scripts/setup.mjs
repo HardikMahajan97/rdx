@@ -11,10 +11,13 @@ import postgres from 'postgres';
 const sql = postgres(process.env.DATABASE_URL, { onnotice: () => {} }); // "already exists, skipping" notices are expected on re-runs
 await sql.file(new URL('../db/schema.sql', import.meta.url).pathname);
 
+// The two first batches, at the first hall (only on a new database; admins add more from the Admin page).
 await sql`
-  insert into batches (id, label, start_time, courts, court_numbers) values
-    ('morning', 'Morning', '07:00', 2, '{1,2}'),
-    ('evening', 'Evening', '19:00', 3, '{4,5,6}')
+  insert into batches (id, label, start_time, courts, court_numbers, venue_id)
+  select x.id, x.label, x.start_time::time, x.courts, x.court_numbers::int[], (select min(id) from venues)
+  from (values ('morning', 'Morning', '07:00', 2, '{1,2}'), ('evening', 'Evening', '19:00', 3, '{4,5,6}'))
+    as x(id, label, start_time, courts, court_numbers)
+  where not exists (select 1 from batches)
   on conflict (id) do nothing`;
 
 const RANK = { player: 0, core: 1, admin: 2 };

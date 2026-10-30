@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { sql, GENDERS, SKILL_LEVELS, type Lang, type Player, type PlanType } from '@/lib/db';
 import { can, canResetPin, requireStaff } from '@/lib/auth';
 import { batchName, daysLabel, translator, type Key, type T } from '@/lib/i18n';
-import { getBatches } from '@/lib/sessions';
+import { getBatches, getVenues } from '@/lib/sessions';
 import { fmtDate, istDate } from '@/lib/time';
 import { ALL_DAYS } from '@/lib/members';
 import { deactivatePlayer, deletePlayer, reactivatePlayer, resetPin, restorePlayer } from '../staff-actions';
@@ -24,7 +24,7 @@ const SORTS = ['new', 'old', 'name', 'recent', 'most'] as const;
 type Status = (typeof STATUSES)[number];
 
 type Params = {
-  q?: string; status?: string; plan?: string; batch?: string; skill?: string; gender?: string; role?: string;
+  q?: string; status?: string; plan?: string; batch?: string; hall?: string; skill?: string; gender?: string; role?: string;
   from?: string; to?: string; played?: string; sort?: string; page?: string; msg?: string; mv?: string;
 };
 type Props = { searchParams: Promise<Params> };
@@ -53,7 +53,9 @@ async function PlayersContent({ searchParams }: Props) {
   const t = translator(me.lang);
   const admin = can(me.role, 'staff');
   const params = await searchParams;
-  const batches = await getBatches();
+  const batches = await getBatches({ all: true });
+  const venues = await getVenues({ all: true });
+  const label = (b: (typeof batches)[number]) => (b.multi_venue ? `${batchName(t, b)} · ${b.venue_name}` : batchName(t, b));
   const today = istDate();
 
   // Only known values get through; anything else is ignored.
@@ -62,6 +64,7 @@ async function PlayersContent({ searchParams }: Props) {
     status: (pick(STATUSES, params.status) === 'deleted' && !admin ? '' : pick(STATUSES, params.status)) as Status | '', // deleted: admins only
     plan: pick(PLANS, params.plan),
     batch: batches.some((b) => b.id === params.batch) ? params.batch! : '',
+    hall: venues.some((v) => String(v.id) === params.hall) ? params.hall! : '',
     skill: pick([...SKILL_LEVELS, 'none'] as const, params.skill),
     gender: pick([...GENDERS, 'none'] as const, params.gender),
     role: pick(ROLES, params.role),
@@ -99,6 +102,7 @@ async function PlayersContent({ searchParams }: Props) {
       : f.plan === 'none' ? sql`and not exists (select 1 from memberships x where x.player_id = p.id)`
       : sql``}
     ${f.batch ? sql`and m.batch_id = ${f.batch}` : sql``}
+    ${f.hall ? sql`and m.batch_id in (select id from batches where venue_id = ${Number(f.hall)})` : sql``}
     ${f.skill === 'none' ? sql`and p.skill_level is null` : f.skill ? sql`and p.skill_level = ${f.skill}` : sql``}
     ${f.gender === 'none' ? sql`and p.gender is null` : f.gender ? sql`and p.gender = ${f.gender}` : sql``}
     ${f.from ? sql`and (p.created_at at time zone 'Asia/Kolkata')::date >= ${f.from}::date` : sql``}
@@ -162,10 +166,10 @@ async function PlayersContent({ searchParams }: Props) {
   const pages = Math.max(1, Math.ceil(total / PER_PAGE));
   const nameOf = (id: string | null) => {
     const b = batches.find((x) => x.id === id);
-    return b ? batchName(t, b) : t('wallet');
+    return b ? label(b) : t('wallet');
   };
-  const batchOpts = batches.map((b) => ({ id: b.id, name: batchName(t, b) }));
-  const nFilters = [f.q, f.plan, f.batch, f.skill, f.gender, f.role, f.from || f.to, f.played].filter(Boolean).length;
+  const batchOpts = batches.filter((b) => b.active).map((b) => ({ id: b.id, name: label(b) }));
+  const nFilters = [f.q, f.plan, f.batch, f.hall, f.skill, f.gender, f.role, f.from || f.to, f.played].filter(Boolean).length;
 
   return (
     <>
@@ -199,9 +203,17 @@ async function PlayersContent({ searchParams }: Props) {
             <label>{t('fBatch')}
               <select name="batch" defaultValue={f.batch}>
                 <option value="">{t('any')}</option>
-                {batches.map((b) => <option key={b.id} value={b.id}>{batchName(t, b)}</option>)}
+                {batches.map((b) => <option key={b.id} value={b.id}>{label(b)}</option>)}
               </select>
             </label>
+            {venues.length > 1 && (
+              <label>{t('hall')}
+                <select name="hall" defaultValue={f.hall}>
+                  <option value="">{t('any')}</option>
+                  {venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </label>
+            )}
             <label>{t('skillLevel')}
               <select name="skill" defaultValue={f.skill}>
                 <option value="">{t('any')}</option>

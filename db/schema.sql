@@ -1,14 +1,28 @@
 -- Badminton community schema. Safe to re-run: the bottom half upgrades older databases in place.
 
+-- A badminton hall. Admins add halls, their courts and their batches from the Admin page (no code change needed).
+create table if not exists venues (
+  id         serial primary key,
+  name       text not null,
+  address    text,
+  map_url    text,                               -- Google Maps link, shown on the promo site
+  courts     int  not null default 6,            -- how many courts the hall has (batch court numbers must fit)
+  active     boolean not null default true,      -- off: hidden, and its batches stop
+  created_at timestamptz not null default now()
+);
+
 create table if not exists batches (
-  id                text primary key,            -- 'morning' | 'evening'
+  id                text primary key,            -- 'morning' | 'evening', or made from the name for batches added later
   label             text not null,
   start_time        time not null,               -- IST wall-clock time
   duration_min      int  not null default 60,
   courts            int  not null,               -- how many courts (= length of court_numbers)
   court_numbers     int[] not null default '{}', -- the exact courts at the venue, e.g. {1,2}
   players_per_court int  not null default 4,
-  price_rupees      int  not null default 100    -- fee per hour for floaters / friends (charged per seat)
+  price_rupees      int  not null default 100,   -- fee per hour for floaters / friends (charged per seat)
+  venue_id          int references venues(id),   -- the hall it plays at
+  days              int[] not null default '{0,1,2,3,4,5,6}', -- days it runs, 0 = Sun … 6 = Sat
+  active            boolean not null default true -- off: no new sessions; upcoming ones are cancelled
 );
 
 create table if not exists players (
@@ -210,3 +224,11 @@ alter table bookings add column if not exists paid_rupees int;
 update bookings b set paid_rupees = ((b.membership_id is null)::int + b.guests) * round(bt.price_rupees * bt.duration_min / 60.0)
   from sessions s join batches bt on bt.id = s.batch_id
   where s.id = b.session_id and b.paid and b.paid_rupees is null;
+
+-- Halls. The first one is where RDx plays today; every existing batch belongs to it.
+alter table batches add column if not exists venue_id int references venues(id);
+alter table batches add column if not exists days int[] not null default '{0,1,2,3,4,5,6}';
+alter table batches add column if not exists active boolean not null default true;
+insert into venues (name, map_url, courts)
+  select 'Aliens Badminton Academy', 'https://maps.app.goo.gl/nebRK6iLGiv4KU559', 6 where not exists (select 1 from venues);
+update batches set venue_id = (select min(id) from venues) where venue_id is null;

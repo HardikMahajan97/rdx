@@ -1,6 +1,6 @@
-import { sql, type Batch, type BookingStatus, type Session, type Tx } from './db';
+import { sql, type Batch, type BookingStatus, type Session, type Tx, type Venue } from './db';
 import { chargeBookings } from './members';
-import { istDate, istInstant } from './time';
+import { dayOfWeek, istDate, istInstant } from './time';
 
 /**
  * open:    voting open, can still back out
@@ -17,13 +17,27 @@ export const CONFIRM_FROM_H = 12;
 /** After the session ends, players have this long to confirm they came. */
 export const ATTEND_GRACE_H = 12;
 
-export async function getBatches() {
-  return sql<Batch[]>`select * from batches order by start_time`;
+/**
+ * Batches people can book: switched on, at a hall that's switched on, grouped by hall then start time.
+ * `{ all: true }` also returns switched-off ones (for names in history, filters and the Admin page).
+ */
+export async function getBatches(opts: { all?: boolean } = {}) {
+  return sql<Batch[]>`
+    select b.*, v.name as venue_name, (select count(*) from venues where active) > 1 as multi_venue
+    from batches b join venues v on v.id = b.venue_id
+    ${opts.all ? sql`` : sql`where b.active and v.active`}
+    order by v.id, b.start_time, b.label`;
 }
 
 export async function getBatch(id: string) {
-  const [batch] = await sql<Batch[]>`select * from batches where id = ${id}`;
+  const [batch] = await sql<Batch[]>`
+    select b.*, v.name as venue_name, (select count(*) from venues where active) > 1 as multi_venue
+    from batches b join venues v on v.id = b.venue_id where b.id = ${id}`;
   return batch ?? null;
+}
+
+export async function getVenues(opts: { all?: boolean } = {}) {
+  return sql<Venue[]>`select * from venues ${opts.all ? sql`` : sql`where active`} order by id`;
 }
 
 export async function getSession(id: number) {
@@ -62,10 +76,11 @@ export function staffStatuses(phase: Phase): BookingStatus[] {
   return [];
 }
 
-/** The batch's next session that hasn't ended yet (today's or tomorrow's), created on first use. */
-async function upcomingSession(batch: Batch): Promise<Session> {
-  for (const offset of [0, 1]) {
+/** The batch's next session that hasn't ended yet, on one of the days it runs (within a week), created on first use. */
+async function upcomingSession(batch: Batch): Promise<Session | null> {
+  for (let offset = 0; offset <= 7; offset++) {
     const date = istDate(offset);
+    if (!batch.days.includes(dayOfWeek(date))) continue;
     const startsAt = istInstant(date, batch.start_time);
     if (startsAt.getTime() + batch.duration_min * 60_000 <= Date.now()) continue;
     const [session] = await sql<Session[]>`
@@ -75,7 +90,7 @@ async function upcomingSession(batch: Batch): Promise<Session> {
       returning *`;
     return session;
   }
-  throw new Error('unreachable: tomorrow always starts in the future');
+  return null; // runs on no day at all
 }
 
 /**
@@ -117,12 +132,14 @@ export async function sweep() {
   await closeFinishedSessions();
 }
 
-/** Upcoming session for every batch. */
+/** Upcoming session for every open batch, soonest first. */
 export async function upcomingSessions() {
   await sweep();
   const batches = await getBatches();
   const list = await Promise.all(batches.map(async (batch) => ({ batch, session: await upcomingSession(batch) })));
-  return list.sort((a, b) => a.session.starts_at.getTime() - b.session.starts_at.getTime());
+  return list
+    .filter((x): x is { batch: Batch; session: Session } => x.session !== null)
+    .sort((a, b) => a.session.starts_at.getTime() - b.session.starts_at.getTime());
 }
 
 /** Sessions that have started, where this player still has to confirm they came. */

@@ -112,15 +112,21 @@ export async function cancelSession(form: FormData) {
   if (str(form, 'confirm') !== 'CANCEL') back(`/roster?sid=${sid}`, 'cancelConfirm');
   await withLockedSession(sid, async (tx, session) => {
     if (session.cancelled) return;
-    // Give back any plan sessions already charged.
-    const charged = await tx<{ id: number }[]>`select id from bookings where session_id = ${sid} and charged`;
-    await refundBookings(tx, charged.map((b) => b.id), staff.id);
-    await tx`
-      update bookings set status = 'withdrawn', membership_id = null, updated_at = now()
-      where session_id = ${sid}`;
-    await tx`update sessions set cancelled = true, locked = true, closed = true where id = ${sid}`;
+    await cancelSessions(tx, [sid], staff.id);
   });
   back(`/roster?sid=${sid}`, 'cancelDone');
+}
+
+/**
+ * Cancels sessions: plan sessions already charged go back, everyone's vote is withdrawn (a paid floater then
+ * shows as a refund), and the sessions are closed.
+ */
+async function cancelSessions(tx: Tx, ids: number[], by: number) {
+  if (ids.length === 0) return;
+  const charged = await tx<{ id: number }[]>`select id from bookings where session_id = any(${ids}::int[]) and charged`;
+  await refundBookings(tx, charged.map((b) => b.id), by);
+  await tx`update bookings set status = 'withdrawn', membership_id = null, updated_at = now() where session_id = any(${ids}::int[])`;
+  await tx`update sessions set cancelled = true, locked = true, closed = true where id = any(${ids}::int[])`;
 }
 
 // ---------- Players ----------
@@ -471,20 +477,99 @@ export async function removeStaff(form: FormData) {
   back('/admin', 'staffRemoved', { name: p?.name ?? '' });
 }
 
+// ---------- Halls and batches (admin, no code needed) ----------
+
+const HALLS = '/admin#halls';
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/** Add a hall, or edit one. Switching a hall off switches its batches off too (their upcoming sessions are cancelled). */
+export async function saveVenue(form: FormData) {
+  const admin = await requireStaff('batches');
+  const id = int(form, 'id');
+  const name = str(form, 'name').slice(0, 80);
+  if (!name) back(HALLS, 'errHallName');
+  const address = str(form, 'address').slice(0, 200) || null;
+  const map = str(form, 'mapUrl');
+  const mapUrl = /^https:\/\/\S+$/.test(map) ? map.slice(0, 300) : null;
+  const courts = clamp(int(form, 'courts'), 1, 99);
+  if (!id) {
+    await sql`insert into venues (name, address, map_url, courts) values (${name}, ${address}, ${mapUrl}, ${courts})`;
+    back(HALLS, 'hallSaved', { name });
+  }
+  const active = str(form, 'active') === '1';
+  // Courts can't shrink below the numbers its batches play on.
+  const [used] = await sql<{ n: number | null }[]>`
+    select max(c)::int as n from batches b, unnest(b.court_numbers) c where b.venue_id = ${id} and b.active`;
+  if (active && used?.n && courts < used.n) back(HALLS, 'errHallCourts', { n: used.n });
+  await sql.begin(async (tx) => {
+    await tx`update venues set name = ${name}, address = ${address}, map_url = ${mapUrl}, courts = ${courts}, active = ${active} where id = ${id}`;
+    if (!active) {
+      const off = await tx<{ id: string }[]>`update batches set active = false where venue_id = ${id} and active returning id`;
+      await cancelUpcoming(tx, off.map((b) => b.id), admin.id);
+    }
+  });
+  back(HALLS, 'hallSaved', { name });
+}
+
+/** Sessions of these batches that haven't started yet (and aren't locked in), cancelled. */
+async function cancelUpcoming(tx: Tx, batchIds: string[], by: number, onlyDays?: number[]) {
+  if (batchIds.length === 0) return;
+  const rows = await tx<{ id: number }[]>`
+    select id from sessions
+    where batch_id = any(${batchIds}::text[]) and not cancelled and not locked and starts_at > now()
+      ${onlyDays ? sql`and not (extract(dow from date)::int = any(${onlyDays}::int[]))` : sql``}
+    for update`;
+  await cancelSessions(tx, rows.map((r) => r.id), by);
+}
+
+/**
+ * Add a batch, or edit one: name, hall, start time, length, the days it runs, its courts, players per court and
+ * the fee per hour. Sessions that haven't started pick up the changes. Switching a batch off, or taking a day
+ * away, cancels its upcoming sessions on those days.
+ */
 export async function saveBatch(form: FormData) {
-  await requireStaff('batches');
+  const admin = await requireStaff('batches');
   const id = str(form, 'id');
-  // "1, 2" or "4 5 6": the exact courts this batch plays on.
+  const label = str(form, 'label').slice(0, 40);
+  if (!label) back(HALLS, 'errBatchName');
+  const [venue] = await sql<{ id: number; courts: number }[]>`select id, courts from venues where id = ${int(form, 'venueId')}`;
+  if (!venue) back(HALLS, 'errHallName');
+  const start = str(form, 'startTime');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) back(HALLS, 'errTime');
+  const duration = clamp(int(form, 'duration') || 60, 15, 300);
+  const days = [...new Set(form.getAll('days').map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  if (days.length === 0) back(HALLS, 'errDays');
+  // "1, 2" or "4 5 6": the exact courts this batch plays on, all inside the hall.
   const numbers = [...new Set(str(form, 'courtNumbers').split(/[^0-9]+/).filter(Boolean).map(Number).filter((n) => n >= 1 && n <= 99))].sort((x, y) => x - y);
-  if (numbers.length === 0) back('/admin', 'errCourts');
-  const perCourt = Math.max(1, int(form, 'playersPerCourt'));
-  await sql`
-    update batches set courts = ${numbers.length}, court_numbers = ${numbers}, players_per_court = ${perCourt},
-      price_rupees = ${Math.max(0, int(form, 'price'))}
-    where id = ${id}`;
-  // Sessions that haven't started pick up the new courts.
-  await sql`
-    update sessions set capacity = ${numbers.length * perCourt}, court_numbers = ${numbers}
-    where batch_id = ${id} and starts_at > now() and not cancelled`;
-  back('/admin', 'batchSaved');
+  if (numbers.length === 0) back(HALLS, 'errCourts');
+  if (numbers.some((n) => n > venue.courts)) back(HALLS, 'errCourtRange', { n: venue.courts });
+  const perCourt = clamp(int(form, 'playersPerCourt') || 4, 1, 12);
+  const price = Math.max(0, int(form, 'price'));
+
+  if (!id) {
+    // A readable id from the name, made unique: "Saturday morning" → "saturday-morning-x7k2".
+    const slug = label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'batch';
+    const newId = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+    await sql`
+      insert into batches (id, label, start_time, duration_min, courts, court_numbers, players_per_court, price_rupees, venue_id, days)
+      values (${newId}, ${label}, ${start}, ${duration}, ${numbers.length}, ${numbers}, ${perCourt}, ${price}, ${venue.id}, ${days})`;
+    back(HALLS, 'batchAdded', { name: label });
+  }
+
+  const active = str(form, 'active') === '1';
+  await sql.begin(async (tx) => {
+    await tx`
+      update batches set label = ${label}, venue_id = ${venue.id}, start_time = ${start}, duration_min = ${duration}, days = ${days},
+        courts = ${numbers.length}, court_numbers = ${numbers}, players_per_court = ${perCourt}, price_rupees = ${price},
+        active = ${active} and (select active from venues where id = ${venue.id})
+      where id = ${id}`;
+    if (!active) await cancelUpcoming(tx, [id], admin.id);
+    else await cancelUpcoming(tx, [id], admin.id, days); // days taken away
+    // Sessions that haven't started (and aren't locked in) pick up the new courts and time.
+    await tx`
+      update sessions set capacity = ${numbers.length * perCourt}, court_numbers = ${numbers},
+        starts_at = case when locked then starts_at else (date + ${start}::time) at time zone 'Asia/Kolkata' end
+      where batch_id = ${id} and starts_at > now() and not cancelled`;
+  });
+  back(HALLS, 'batchSaved');
 }

@@ -66,7 +66,7 @@ async function RosterContent({ searchParams }: Props) {
       <div className="tabs sub-tabs">
         {upcoming.map((u) => (
           <a key={u.batch.id} href={`/roster?b=${u.batch.id}`} className={u.session.id === session.id ? 'on' : ''}>
-            {batchName(t, u.batch)} · {fmtTime(u.session.starts_at)}
+            {batchName(t, u.batch)}{u.batch.multi_venue ? ` · ${u.batch.venue_name}` : ''} · {fmtTime(u.session.starts_at)}
           </a>
         ))}
       </div>

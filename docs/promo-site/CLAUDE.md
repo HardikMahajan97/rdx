@@ -21,6 +21,7 @@ All of these live in `assets/js/config.js`:
 - Name **RDx**: R and D uppercase, x lowercase in red. **No apostrophe** (the owner tried "RD'x", then asked for it to be removed everywhere). The group is always written **RDx BADDY GROUP** on one line (never wrapped), capitals except the x; the header and footer wordmark, the app's top bar and the install name all use it.
 - **300+ members**.
 - Venue: **Aliens Badminton Academy**, shown once, as a line with a pin and a Google Maps link (`SITE.mapUrl`, https://maps.app.goo.gl/nebRK6iLGiv4KU559) just above "Timings and courts" on Home and About. The owner first had it removed everywhere, then asked for it back in that one place only; don't add it to the footer or descriptions.
+- **Halls, batches, times and courts now come from the database** (`/api/venues`, edited on the app's Admin → Halls and batches). The values below and in `config.js` are only a fallback for when the API can't be reached.
 - **Batches:**
   - Morning: courts **1 and 2** (`SESSIONS` in `config.js`; keep it in step with Admin → Batches → Court numbers).
   - Evening: courts **4, 5 and 6**. (The owner corrected these; they were the other way round before.)

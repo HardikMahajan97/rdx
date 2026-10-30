@@ -33,7 +33,9 @@ This file holds the intent and the decisions made so far, so future work doesn't
 | `lib/sessions.ts` | Slot timing, phases, the sweep (lock and close), `staffStatuses`, `seatFee` |
 | `lib/members.ts` | Plans: `covers`, `planBlocks`, `reservedSessions`, `chargeBookings`, `refundBookings`, `recheckBookings`, `assignPlan`, `ledger` |
 | `lib/snapshot.ts` | Per-session roster numbers (dues, refunds, totals) |
-| `lib/stats.ts` | Dashboard numbers: `openRequests`, `revenue`, `headCounts`, `courtStats`, `lowPlans` |
+| `lib/stats.ts` | Dashboard numbers: `openRequests`, `revenue`, `revenueByHall`, `headCounts`, `courtStats`, `lowPlans`, `playerMix` |
+| `app/ui/PlayerCharts.tsx`, `app/ui/ChartTip.tsx` | Player charts on the dashboard (who plays, by skill, by gender, members per batch, new players) and their tap/hover readout |
+| `app/api/venues` | Public JSON of open halls and batches, read by the promo site |
 | `app/logout/route.ts` | `POST /logout`: deletes every RDx cookie and sends `Clear-Site-Data` |
 | `lib/i18n.ts` | en/mr/hi dictionaries. The `Dict` type forces every key into all three languages. |
 | `db/schema.sql` | Idempotent schema plus an **upgrade section** for older databases |
@@ -99,6 +101,22 @@ This file holds the intent and the decisions made so far, so future work doesn't
   - Editing a plan's amount also writes an `adjust` ledger line carrying the money difference, for the history. Revenue doesn't read those lines, because the plan's amount already includes the correction.
 - **Batch prices are per hour** (admin → batches, "Fee per hour"); a seat costs that × the session length (`seatFee`). Batches are 60 minutes today, so the price per session is the same.
 - Admin batch settings: the exact **court numbers** (e.g. morning `1, 2`, evening `4, 5, 6`), players per court, fee per hour. `batches.court_numbers` / `sessions.court_numbers` hold them; `courts` is just their count. A new session copies its batch's courts. On the roster, staff **add a court by entering its number** (`addCourt`) or remove one (`removeCourt`); each adds or removes one court's seats. Players see the court numbers on each session card and on the court board.
+
+## Halls (venues) and batches (decided: admin-managed, no code)
+
+- The owner won't be around to change code, so **halls, their courts and batches are all edited on Admin → Halls and batches** (`saveVenue`, `saveBatch`). Never hard-code a hall, batch, time or court again.
+- `venues`: name, address, Maps link, number of courts, on/off. Aliens Badminton Academy (6 courts) is the first, made by the schema upgrade.
+- `batches.venue_id`, `batches.days` (the days it runs), `batches.active`. New batch ids are made from the name plus a random suffix; `batchName` translates only `morning` / `evening` and shows the admin's label otherwise.
+- Court numbers must fit the hall's court count. A hall can't shrink below a court an open batch uses.
+- Switching a batch off, taking a day away from it, or closing a hall cancels those upcoming sessions through `cancelSessions` (the same refunds as "Cancel session"). Changing a batch's time or courts updates its sessions that aren't locked yet.
+- `getBatches()` = open batches at open halls, with `venue_name` and `multi_venue`; `getBatches({ all: true })` also returns switched-off ones, for names in history, filters and Admin.
+- More than one open hall: session cards show the hall's name, the player home gets hall chips (members start on their plan's hall), Roster tabs and plan forms name the hall, Players can be filtered by hall, and the dashboard groups court figures by hall and adds money "By hall" (wallet top-ups count as "any hall").
+- The promo site reads halls and batches from `/api/venues` (cached 60 s); `config.js` `SITE.venue` / `SESSIONS` are only a fallback.
+
+## Charts (decided)
+
+- Use the dataviz skill for any chart. The app is dark-only; series colours were run through its validator against the card surface `#0c0c0e`, in adjacent order, and all checks pass: **fixed plan `#e5484d` → wallet `#3987e5` → floater `#c98500`** (`--s-fixed`, `--s-wallet`, `--s-floater`). Keep that order in stacks, and keep colour tied to the group in every chart. A single series uses the neutral `--s-neutral`. Re-run the validator if you add a colour.
+- Every chart has a legend (≥ 2 series), labels only where they fit, the `ChartTips` readout (tap, hover or focus), and a table view or plain numbers. Bars are ≤ 24 px with 2 px gaps and 4 px round ends. Categories with no colour identity (activity) are numbers, not a chart.
 
 ## Design decisions (the owner's taste; don't regress)
 

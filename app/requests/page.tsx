@@ -36,9 +36,13 @@ async function RequestsContent({ searchParams }: Props) {
   const me = await requireStaff('members');
   const t = translator(me.lang);
   const { msg, mv } = await searchParams;
-  const batches = await getBatches();
-  const batchOpts = batches.map((b) => ({ id: b.id, name: batchName(t, b) }));
-  const nameOf = (id: string | null) => (id ? batchOpts.find((b) => b.id === id)?.name ?? id : t('wallet'));
+  const allBatches = await getBatches({ all: true });
+  const label = (b: (typeof allBatches)[number]) => (b.multi_venue ? `${batchName(t, b)} · ${b.venue_name}` : batchName(t, b));
+  const batchOpts = allBatches.filter((b) => b.active).map((b) => ({ id: b.id, name: label(b) }));
+  const nameOf = (id: string | null) => {
+    const b = allBatches.find((x) => x.id === id);
+    return id ? (b ? label(b) : id) : t('wallet');
+  };
 
   const signups = await sql<Pick<Player, 'id' | 'name' | 'phone' | 'created_at' | 'email' | 'skill_level' | 'gender'>[]>`
     select id, name, phone, created_at, email, skill_level, gender from players

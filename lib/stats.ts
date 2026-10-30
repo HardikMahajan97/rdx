@@ -131,3 +131,82 @@ export async function lowPlans() {
     where m.status = 'active' and m.sessions_total - m.sessions_used between 1 and 3 and p.deleted_at is null
     order by remaining, p.name limit 12`;
 }
+
+export type PlayerGroup = 'fixed' | 'wallet' | 'floater';
+export const GROUPS: PlayerGroup[] = ['fixed', 'wallet', 'floater'];
+type Split = Record<PlayerGroup, number>;
+const split = (): Split => ({ fixed: 0, wallet: 0, floater: 0 });
+
+/**
+ * Who plays with us: every approved, active player (not staff, not deactivated or deleted) in exactly one group:
+ * a running fixed plan, a running wallet, or a floater (no running plan). Broken down by skill, gender and batch.
+ */
+export async function playerMix(today = istDate()) {
+  const rows = await sql<{ grp: PlayerGroup; skill: string | null; gender: string | null; batch_id: string | null; n: number }[]>`
+    select
+      case when m.live and m.kind = 'fixed' then 'fixed' when m.live then 'wallet' else 'floater' end as grp,
+      p.skill_level as skill, p.gender, case when m.live and m.kind = 'fixed' then m.batch_id end as batch_id,
+      count(*)::int as n
+    from players p
+    left join lateral (
+      select x.kind, x.batch_id, (x.sessions_used < x.sessions_total and (x.ends_on is null or x.ends_on >= ${today})) as live
+      from memberships x where x.player_id = p.id and x.status = 'active'
+    ) m on true
+    where p.role = 'player' and p.approved_at is not null and p.deactivated_at is null and p.deleted_at is null
+    group by 1, 2, 3, 4`;
+
+  const total = split();
+  const bySkill = new Map<string, Split>();
+  const byGender = new Map<string, Split>();
+  const byBatch = new Map<string, number>();
+  for (const r of rows) {
+    total[r.grp] += r.n;
+    const sk = r.skill ?? 'none', g = r.gender ?? 'none';
+    if (!bySkill.has(sk)) bySkill.set(sk, split());
+    bySkill.get(sk)![r.grp] += r.n;
+    if (!byGender.has(g)) byGender.set(g, split());
+    byGender.get(g)![r.grp] += r.n;
+    if (r.batch_id) byBatch.set(r.batch_id, (byBatch.get(r.batch_id) ?? 0) + r.n);
+  }
+
+  // New registrations per month (approved players), last six months, oldest first.
+  const reg = await sql<{ ym: string; n: number }[]>`
+    select to_char(created_at at time zone 'Asia/Kolkata', 'YYYY-MM') as ym, count(*)::int as n
+    from players where role = 'player' and approved_at is not null and deleted_at is null
+      and created_at >= (date_trunc('month', ${today}::date) - interval '5 months')
+    group by 1`;
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(`${today.slice(0, 7)}-15T12:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() - (5 - i));
+    const ym = d.toISOString().slice(0, 7);
+    return { ym, n: reg.find((r) => r.ym === ym)?.n ?? 0 };
+  });
+
+  // How recently they played.
+  const [act] = await sql<{ recent: number; idle: number; never: number }[]>`
+    select count(*) filter (where a.last >= ${today}::date - 30)::int as recent,
+      count(*) filter (where a.last < ${today}::date - 30)::int as idle,
+      count(*) filter (where a.last is null)::int as never
+    from players p
+    left join lateral (
+      select max(s.date) as last from bookings b join sessions s on s.id = b.session_id
+      where b.player_id = p.id and b.status = 'present'
+    ) a on true
+    where p.role = 'player' and p.approved_at is not null and p.deactivated_at is null and p.deleted_at is null`;
+
+  return { total, bySkill, byGender, byBatch, months, activity: act };
+}
+
+/** Money by hall, all time: session fees by the session's hall, fixed plans by their batch's hall; wallets go anywhere. */
+export async function revenueByHall() {
+  return sql<{ venue_id: number | null; amount: number }[]>`
+    select venue_id, sum(amount)::int as amount from (
+      select bt.venue_id, m.amount_rupees as amount
+        from memberships m left join batches bt on bt.id = m.batch_id where coalesce(m.amount_rupees, 0) <> 0
+      union all
+      select null, l.amount_rupees from plan_ledger l where l.reason = 'topup' and coalesce(l.amount_rupees, 0) <> 0
+      union all
+      select bt.venue_id, b.paid_rupees from bookings b join sessions s on s.id = b.session_id join batches bt on bt.id = s.batch_id
+        where b.paid and coalesce(b.paid_rupees, 0) <> 0
+    ) x group by venue_id`;
+}

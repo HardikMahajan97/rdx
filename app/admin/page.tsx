@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
-import { sql, type Batch, type Player } from '@/lib/db';
+import { sql, type Batch, type Player, type Venue } from '@/lib/db';
 import { requireStaff } from '@/lib/auth';
-import { batchName, translator, type T } from '@/lib/i18n';
-import { getBatches, seatFee } from '@/lib/sessions';
+import { batchName, translator, type Key, type T } from '@/lib/i18n';
+import { getBatches, getVenues, seatFee } from '@/lib/sessions';
 import { fmtTime, istDate, istInstant } from '@/lib/time';
-import { removeStaff, resetPin, saveBatch, saveStaff } from '../staff-actions';
-import { AutoRefresh } from '../ui/Client';
+import { removeStaff, resetPin, saveBatch, saveStaff, saveVenue } from '../staff-actions';
+import { AutoRefresh, Submit } from '../ui/Client';
 import { PostsAdmin } from '../ui/PostsAdmin';
 import { Msg, Skeleton, Toolbar } from '../ui/Shared';
 
@@ -23,7 +23,8 @@ async function AdminContent({ searchParams }: Props) {
   const me = await requireStaff('staff');
   const t = translator(me.lang);
   const { msg, mv } = await searchParams;
-  const batches = await getBatches();
+  const batches = await getBatches({ all: true });
+  const venues = await getVenues({ all: true });
   const staff = await sql<Player[]>`select * from players where role <> 'player' order by role, name`;
   // The full list, with filters, is on /players; this is just the headline numbers.
   const [n] = await sql<{ active: number; nopin: number; pending: number; deactivated: number; deleted: number }[]>`
@@ -102,10 +103,49 @@ async function AdminContent({ searchParams }: Props) {
       </div>
 
       </div>
-      <div>
-      <h3>{t('batches')}</h3>
-      {batches.map((b) => <BatchForm key={b.id} t={t} batch={b} />)}
       </div>
+
+      <h3 id="halls">{t('hallsTitle')}</h3>
+      <p className="muted">{t('hallsHint')}</p>
+      <div className="cols">
+        {venues.map((v) => (
+          <section key={v.id} className={`card hall ${v.active ? '' : 'off'}`}>
+            <div className="spread">
+              <h2>{v.name}</h2>
+              <span className="row">
+                <span className="pill">{t('nCourts', { n: v.courts })}</span>
+                {!v.active && <span className="pill bad">{t('switchedOff')}</span>}
+              </span>
+            </div>
+            {v.address && <p className="muted">{v.address}</p>}
+            <ul className="list">
+              {batches.filter((b) => b.venue_id === v.id).map((b) => (
+                <li key={b.id}>
+                  <details>
+                    <summary className="batch-summary">
+                      <b>{batchName(t, b)}</b>
+                      <span className="muted batch-meta">{fmtTime(istInstant(istDate(), b.start_time))} · {t(b.court_numbers.length === 1 ? 'court' : 'courtsLabel')} {b.court_numbers.join(', ')} · ₹{b.price_rupees}/h</span>
+                      {!b.active && <span className="pill bad">{t('switchedOff')}</span>}
+                    </summary>
+                    <BatchForm t={t} batch={b} venues={venues} />
+                  </details>
+                </li>
+              ))}
+            </ul>
+            <details className="card-nested">
+              <summary>＋ {t('addBatchAt', { name: v.name })}</summary>
+              <div><BatchForm t={t} venues={venues} venueId={v.id} /></div>
+            </details>
+            <details className="card-nested">
+              <summary>{t('editHall')}</summary>
+              <div><VenueForm t={t} venue={v} /></div>
+            </details>
+          </section>
+        ))}
+        <details className="card">
+          <summary>＋ {t('addHall')}</summary>
+          <div style={{ marginTop: 12 }}><VenueForm t={t} /></div>
+        </details>
       </div>
 
       <PostsAdmin />
@@ -125,18 +165,61 @@ async function AdminContent({ searchParams }: Props) {
   );
 }
 
-function BatchForm({ t, batch }: { t: T; batch: Batch }) {
+const DAYS = [1, 2, 3, 4, 5, 6, 0]; // Mon first
+
+/** Add or edit a batch. Every setting a batch has, so new ones need no code. */
+function BatchForm({ t, batch, venues, venueId }: { t: T; batch?: Batch; venues: Venue[]; venueId?: number }) {
+  const days = batch?.days ?? [0, 1, 2, 3, 4, 5, 6];
   return (
-    <form action={saveBatch} className="card stack">
-      <input type="hidden" name="id" value={batch.id} />
-      <h2>{batchName(t, batch)} · {fmtTime(istInstant(istDate(), batch.start_time))}</h2>
+    <form action={saveBatch} className="stack batch-form">
+      {batch && <input type="hidden" name="id" value={batch.id} />}
       <div className="grid2">
-        <label>{t('courtNumbers')}<input name="courtNumbers" inputMode="numeric" placeholder="1, 2" defaultValue={(batch.court_numbers.length ? batch.court_numbers : Array.from({ length: batch.courts }, (_, i) => i + 1)).join(', ')} required /></label>
-        <label>{t('perCourt')}<input name="playersPerCourt" type="number" min="1" defaultValue={batch.players_per_court} /></label>
-        <label>{t('price')}<input name="price" type="number" min="0" defaultValue={batch.price_rupees} /></label>
+        <label>{t('batchLabel')}<input name="label" defaultValue={batch?.label ?? ''} maxLength={40} placeholder={t('batchLabelHint')} required /></label>
+        <label>{t('hall')}
+          <select name="venueId" defaultValue={batch?.venue_id ?? venueId}>
+            {venues.filter((v) => v.active || v.id === batch?.venue_id).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </label>
       </div>
-      {batch.duration_min !== 60 && <p className="muted">{t('perSession', { amount: seatFee(batch), min: batch.duration_min })}</p>}
-      <button>{t('save')}</button>
+      <div className="grid2">
+        <label>{t('startTime')}<input name="startTime" type="time" defaultValue={batch?.start_time.slice(0, 5) ?? ''} required /></label>
+        <label>{t('durationMin')}<input name="duration" type="number" min="15" max="300" step="5" defaultValue={batch?.duration_min ?? 60} /></label>
+      </div>
+      <fieldset className="days-pick">
+        <legend>{t('runsOn')}</legend>
+        {DAYS.map((d) => (
+          <label key={d} className="day-check"><input type="checkbox" name="days" value={d} defaultChecked={days.includes(d)} /> {t(`d${d}` as Key)}</label>
+        ))}
+      </fieldset>
+      <div className="grid2">
+        <label>{t('courtNumbers')}<input name="courtNumbers" inputMode="numeric" placeholder="1, 2" defaultValue={batch ? (batch.court_numbers.length ? batch.court_numbers : Array.from({ length: batch.courts }, (_, i) => i + 1)).join(', ') : ''} required /></label>
+        <label>{t('perCourt')}<input name="playersPerCourt" type="number" min="1" max="12" defaultValue={batch?.players_per_court ?? 4} /></label>
+      </div>
+      <label>{t('price')}<input name="price" type="number" min="0" defaultValue={batch?.price_rupees ?? 100} /></label>
+      {batch && batch.duration_min !== 60 && <p className="muted">{t('perSession', { amount: seatFee(batch), min: batch.duration_min })}</p>}
+      {batch && (
+        <label className="check-row"><input type="checkbox" name="active" value="1" defaultChecked={batch.active} /> {t('batchOn')}</label>
+      )}
+      {batch && <p className="hint">{t('batchOffHint')}</p>}
+      <Submit className="btn-primary">{batch ? t('save') : t('addBatch')}</Submit>
+    </form>
+  );
+}
+
+/** Add or edit a hall. */
+function VenueForm({ t, venue }: { t: T; venue?: Venue }) {
+  return (
+    <form action={saveVenue} className="stack">
+      {venue && <input type="hidden" name="id" value={venue.id} />}
+      <label>{t('hallName')}<input name="name" defaultValue={venue?.name ?? ''} maxLength={80} required /></label>
+      <label>{t('hallAddress')}<input name="address" defaultValue={venue?.address ?? ''} maxLength={200} /></label>
+      <div className="grid2">
+        <label>{t('hallMap')}<input name="mapUrl" type="url" defaultValue={venue?.map_url ?? ''} placeholder="https://maps.app.goo.gl/…" /></label>
+        <label>{t('hallCourts')}<input name="courts" type="number" min="1" max="99" defaultValue={venue?.courts ?? 6} required /></label>
+      </div>
+      {venue && <label className="check-row"><input type="checkbox" name="active" value="1" defaultChecked={venue.active} /> {t('hallOn')}</label>}
+      {venue && <p className="hint">{t('hallOffHint')}</p>}
+      <Submit className="btn-primary">{venue ? t('save') : t('addHall')}</Submit>
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { sql, type Membership, type PlanKind } from '@/lib/db';
 import { getLang, isStaff, viewer } from '@/lib/auth';
 import { batchName, translator } from '@/lib/i18n';
@@ -10,7 +11,7 @@ import { Submit } from './ui/Client';
 import { Loader, LogoutButton, Msg, Rally, Skeleton, Toolbar } from './ui/Shared';
 import { AttendancePrompts, PlanCard, PlayerSessions, StaffDashboard } from './ui/Views';
 
-type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
+type Props = { searchParams: Promise<{ msg?: string; mv?: string; hall?: string }> };
 
 export default function Home(props: Props) {
   return (
@@ -21,7 +22,7 @@ export default function Home(props: Props) {
 }
 
 async function HomeContent({ searchParams }: Props) {
-  const { msg, mv } = await searchParams;
+  const { msg, mv, hall } = await searchParams;
   const { player: me, gate } = await viewer();
   const lang = await getLang(me);
   const t = translator(lang);
@@ -99,6 +100,12 @@ async function HomeContent({ searchParams }: Props) {
     select plan, status, amount_rupees, sessions_requested from membership_requests
     where player_id = ${me.id} and status in ('pending', 'quoted')`;
   const first = me.first_name;
+  // More than one hall: the player picks which hall's sessions to see (members start on their plan's hall).
+  const halls = [...new Map(upcoming.map((u) => [u.batch.venue_id, u.batch.venue_name ?? ''])).entries()];
+  const planHall = plan?.kind === 'fixed' ? upcoming.find((u) => u.batch.id === plan.batch_id)?.batch.venue_id : undefined;
+  const chosenHall = halls.length < 2 || hall === 'all' ? null : Number(hall) || planHall || null;
+  const shown = chosenHall ? upcoming.filter((u) => u.batch.venue_id === chosenHall) : upcoming;
+  const batchLabel = (b: (typeof upcoming)[number]['batch']) => (b.multi_venue ? `${batchName(t, b)} · ${b.venue_name}` : batchName(t, b));
   // Fixed plans have to run out before a new one; wallets can be topped up any time.
   const canApply = !plan || plan.kind === 'wallet';
   const membership = request ? (
@@ -121,7 +128,7 @@ async function HomeContent({ searchParams }: Props) {
         )}
       </summary>
       <p className="muted">{plan ? t('topUpHint') : t('applyHint')}</p>
-      <ApplyForm walletOnly={!!plan} batches={upcoming.map(({ batch }) => ({ id: batch.id, name: batchName(t, batch) }))}
+      <ApplyForm walletOnly={!!plan} batches={upcoming.map(({ batch }) => ({ id: batch.id, name: batchLabel(batch) }))}
         labels={{
           batch: t('batch'), plan: t('plan'), month: t('plan_month'), weekdays: t('plan_weekdays'), weekends: t('plan_weekends'),
           wallet: t('plan_wallet'), walletHint: t('walletHint'), sessions: t('sessionsWanted'), note: t('note'),
@@ -143,7 +150,13 @@ async function HomeContent({ searchParams }: Props) {
       {!plan && membership}
       {plan && <PlanCard t={t} lang={lang} plan={plan} batches={upcoming.map((u) => u.batch)} />}
       <AttendancePrompts me={me} t={t} lang={lang} />
-      <PlayerSessions me={me} t={t} lang={lang} plan={plan} upcoming={upcoming} />
+      {halls.length > 1 && (
+        <nav className="chips" aria-label={t('hall')}>
+          <Link href="/?hall=all" className={!chosenHall ? 'on' : ''}>{t('allHalls')}</Link>
+          {halls.map(([id, name]) => <Link key={id} href={`/?hall=${id}`} className={chosenHall === id ? 'on' : ''}>{name}</Link>)}
+        </nav>
+      )}
+      <PlayerSessions me={me} t={t} lang={lang} plan={plan} upcoming={shown} />
       {plan && membership}
 
       <details className="card name-card">

@@ -32,9 +32,11 @@ async function MembersContent({ searchParams }: Props) {
   const me = await requireStaff('members');
   const t = translator(me.lang);
   const { msg, mv } = await searchParams;
-  const batches = await getBatches();
-  const batchOpts = batches.map((b) => ({ id: b.id, name: batchName(t, b) }));
-  const nameOf = (id: string | null) => (id ? batchOpts.find((b) => b.id === id)?.name ?? id : t('wallet'));
+  const allBatches = await getBatches({ all: true });
+  const label = (b: (typeof allBatches)[number]) => (b.multi_venue ? `${batchName(t, b)} · ${b.venue_name}` : batchName(t, b));
+  const batches = allBatches.filter((b) => b.active);
+  const batchOpts = batches.map((b) => ({ id: b.id, name: label(b) }));
+  const nameOf = (id: string | null) => (id ? (allBatches.find((b) => b.id === id) ? label(allBatches.find((b) => b.id === id)!) : id) : t('wallet'));
 
   const [req] = await sql<{ pending: number; quoted: number }[]>`
     select count(*) filter (where r.status = 'pending')::int as pending, count(*) filter (where r.status = 'quoted')::int as quoted

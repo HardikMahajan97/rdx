@@ -7,7 +7,8 @@ export const SITE = {
   appUrl: '/?app=1',
   // Where the Register buttons go (data-app="register"): the app's own registration page.
   registerUrl: '/register',
-  // Where you play. Leave empty to hide it. mapUrl: a Google Maps link to it (optional).
+  // Where you play. Only a fallback now: the site shows the halls and batches set on the Admin page (/api/venues).
+  // Leave empty to hide it. mapUrl: a Google Maps link to it (optional).
   venue: 'Aliens Badminton Academy',
   mapUrl: 'https://maps.app.goo.gl/nebRK6iLGiv4KU559',
   joinMessage: "Hi! I'd like to join RDx badminton. My name is ",
@@ -19,6 +20,7 @@ export const COMMUNITY = {
   totalCourts: 6,
 };
 
+// Fallback only (if /api/venues can't be reached): the halls and batches come from the Admin page.
 // courts: court numbers at the venue used by that batch.
 export const SESSIONS = [
   { name: 'Morning', start: '7:00 AM', end: '8:00 AM', courts: [1, 2] },

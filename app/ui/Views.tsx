@@ -2,8 +2,9 @@ import { sql, type Batch, type Booking, type Lang, type Membership, type Player,
 import { batchName, daysLabel, type T } from '@/lib/i18n';
 import { bookable, covers, planBlocks, planLeft, reservedSessions } from '@/lib/members';
 import { attendanceHistory, snapshot, type Snapshot, type SnapshotRow } from '@/lib/snapshot';
-import { courtStats, headCounts, lowPlans, openRequests, revenue } from '@/lib/stats';
-import { awaitingAttendance, getBatches, seatFee, timing } from '@/lib/sessions';
+import { courtStats, headCounts, lowPlans, openRequests, revenue, revenueByHall } from '@/lib/stats';
+import { PlayerCharts } from './PlayerCharts';
+import { awaitingAttendance, getBatches, getVenues, seatFee, timing } from '@/lib/sessions';
 import { dayOfWeek, fmtDate, fmtTime, istDate } from '@/lib/time';
 import { confirmSlot, markAttended, withdraw } from '../actions';
 
@@ -105,14 +106,17 @@ const monthName = (ym: string, lang: Lang) =>
   new Date(`${ym}-15T12:00:00Z`).toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { timeZone: 'UTC', month: 'short', year: 'numeric' });
 
 export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: Lang }) {
-  const [heads, req, money, court, low, batches] = await Promise.all([
-    headCounts(), openRequests(me), revenue(), courtStats(), lowPlans(), getBatches(),
+  const [heads, req, money, court, low, allBatches, venues, byHall] = await Promise.all([
+    headCounts(), openRequests(me), revenue(), courtStats(), lowPlans(), getBatches({ all: true }), getVenues({ all: true }), revenueByHall(),
   ]);
+  // Batches that are on, or that played in the last 30 days.
+  const batches = allBatches.filter((b) => b.active || court.some((c) => c.batch_id === b.id));
+  const multiHall = venues.filter((v) => v.active).length > 1;
   const nameOf = (id: string | null) => {
-    const b = batches.find((x) => x.id === id);
+    const b = allBatches.find((x) => x.id === id);
     return b ? batchName(t, b) : t('wallet');
   };
-  const histories = await Promise.all(batches.map((b) => attendanceHistory(b.id)));
+  const histories = await Promise.all(allBatches.map((b) => attendanceHistory(b.id)));
   const maxMonth = Math.max(1, ...money.last6.map((m) => m.total));
 
   return (
@@ -137,6 +141,10 @@ export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: 
         <Tile label={t('revenueMonth')} value={rupees(money.month.total)} tone="ok" sub={t('revenueYearSub', { amount: rupees(money.year.total) })} />
       </div>
 
+      <h3>{t('players')}</h3>
+      <PlayerCharts t={t} lang={lang} batches={allBatches} />
+
+      <h3>{t('moneyAndCourts')}</h3>
       <div className="cols">
         <section className="card">
           <h2>{t('moneyTitle')}</h2>
@@ -164,6 +172,17 @@ export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: 
             {money.toRefund > 0 && <span className="pill bad">{t('toRefund', { amount: rupees(money.toRefund) })}</span>}
             <span className="pill">{t('freeSessionsMonth', { n: money.freeSessions })}</span>
           </div>
+          {multiHall && (
+            <>
+              <h3>{t('byHall')}</h3>
+              <ul className="hall-money">
+                {[...venues.map((v) => ({ key: String(v.id), name: v.name, amount: byHall.find((x) => x.venue_id === v.id)?.amount ?? 0 })),
+                  { key: 'any', name: t('walletsAnyHall'), amount: byHall.find((x) => x.venue_id === null)?.amount ?? 0 }].map((h) => (
+                  <li key={h.key}><span>{h.name}</span><b>{rupees(h.amount)}</b></li>
+                ))}
+              </ul>
+            </>
+          )}
           <p className="hint">{t('moneyHint')}</p>
         </section>
 
@@ -173,8 +192,10 @@ export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: 
           {batches.map((b, i) => {
             const c = court.find((x) => x.batch_id === b.id);
             const played = (c?.members ?? 0) + (c?.floaters ?? 0);
+            const newHall = multiHall && b.venue_id !== batches[i - 1]?.venue_id;
             return (
               <div key={b.id} className="batch-stats">
+                {newHall && <div className="hall-head">{b.venue_name}</div>}
                 <div className="spread"><b>{batchName(t, b)}</b><span className="muted">{t('nSessionsHeld', { n: c?.sessions ?? 0 })}</span></div>
                 <div className="mini-tiles">
                   <div><b>{c?.sessions ? Math.round((c.seats / c.sessions) * 10) / 10 : 0}</b><span>{t('avgPlayers')}</span></div>
@@ -185,7 +206,7 @@ export async function StaffDashboard({ me, t, lang }: { me: Player; t: T; lang: 
                 </div>
                 <details className="card-nested">
                   <summary>{t('attendance')}</summary>
-                  <AttendanceChart id={b.id} data={histories[i]} lang={lang}
+                  <AttendanceChart id={b.id} data={histories[allBatches.indexOf(b)]} lang={lang}
                     labels={{ showed: t('showed'), missed: t('missed'), table: t('tableView'), date: t('date'), empty: t('noHistory') }} />
                 </details>
               </div>

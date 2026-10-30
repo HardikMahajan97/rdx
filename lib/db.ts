@@ -51,6 +51,16 @@ export type Player = {
   lang: Lang;
 };
 
+export type Venue = {
+  id: number;
+  name: string;
+  address: string | null;
+  map_url: string | null;
+  /** How many courts the hall has; batch court numbers must fit in 1…courts. */
+  courts: number;
+  active: boolean;
+};
+
 export type Batch = {
   id: string;
   label: string;
@@ -60,6 +70,14 @@ export type Batch = {
   court_numbers: number[];
   players_per_court: number;
   price_rupees: number;
+  venue_id: number;
+  /** Days it runs, 0 = Sun … 6 = Sat. */
+  days: number[];
+  active: boolean;
+  /** Joined in by getBatches. */
+  venue_name?: string;
+  /** More than one hall is open: show the hall's name with the batch. */
+  multi_venue?: boolean;
 };
 
 export type Session = {

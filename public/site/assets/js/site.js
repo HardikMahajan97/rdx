@@ -26,23 +26,44 @@ const initials = (name) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('
 
 const courtsText = (c) => (c.length === 1 ? `Court ${c[0]}` : `Courts ${c.slice(0, -1).join(', ')} and ${c.at(-1)}`);
 
-/** Members count and the plain-text timings: each batch with its hours and exact court numbers. */
-function renderAbout() {
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const daysText = (d) => (!d || d.length === 7 ? '' : [1, 2, 3, 4, 5, 6, 0].filter((x) => d.includes(x)).map((x) => DAY_NAMES[x]).join(', '));
+
+/** The halls and their batches, as admins set them on the Admin page. Falls back to config.js if the API is unreachable. */
+async function loadVenues() {
+  try {
+    const r = await fetch('/api/venues');
+    if (!r.ok) throw new Error(String(r.status));
+    const { venues } = await r.json();
+    if (venues?.length) return venues;
+  } catch { /* fall back below */ }
+  return [{ name: SITE.venue, mapUrl: SITE.mapUrl, batches: SESSIONS.map((b) => ({ ...b, days: null })) }];
+}
+
+/** Members count and the plain-text timings: each hall (with its Maps link), then its batches with hours and courts. */
+async function renderAbout() {
   for (const id of ['#stat-members', '#stat-members-2']) if (has(id)) $(id).textContent = COMMUNITY.members;
+  if (!has('#sessions-text') && !has('#chain-times')) return;
+  const venues = await loadVenues();
+  if (has('#chain-times')) $('#chain-times').textContent = [...new Set(venues.flatMap((v) => v.batches.map((x) => x.start)))].join(' or ');
   if (!has('#sessions-text')) return;
-  // The venue, with its Google Maps link, just above the timings.
-  if (SITE.venue) {
-    const pin = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    pin.setAttribute('aria-hidden', 'true');
-    pin.innerHTML = `<use href="${SPRITE}#i-pin"/>`;
-    $('#sessions-text').before(h('p', { class: 'venue-line' }, pin, h('span', { class: 'venue-label' }, 'Venue:'),
-      SITE.mapUrl ? h('a', { href: SITE.mapUrl, target: '_blank', rel: 'noopener' }, SITE.venue) : SITE.venue));
-  }
-  $('#sessions-text').append(...SESSIONS.map((b) =>
-    h('li', {},
-      h('b', {}, b.name),
-      h('span', { class: 'when' }, `${b.start} to ${b.end}`),
-      h('span', { class: 'where' }, courtsText(b.courts)))));
+  const list = $('#sessions-text');
+  venues.forEach((v, i) => {
+    if (v.name) {
+      const pin = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      pin.setAttribute('aria-hidden', 'true');
+      pin.innerHTML = `<use href="${SPRITE}#i-pin"/>`;
+      const line = h('p', { class: 'venue-line' }, pin, h('span', { class: 'venue-label' }, 'Venue:'),
+        v.mapUrl ? h('a', { href: v.mapUrl, target: '_blank', rel: 'noopener' }, v.name) : v.name);
+      // One hall: the line sits above the list, as before. More halls: each hall heads its own group.
+      if (i === 0) list.before(line); else list.append(h('li', { class: 'venue-row' }, line));
+    }
+    list.append(...v.batches.map((b) =>
+      h('li', {},
+        h('b', {}, b.name),
+        h('span', { class: 'when' }, `${b.start} to ${b.end}${daysText(b.days) ? ` · ${daysText(b.days)}` : ''}`),
+        h('span', { class: 'where' }, courtsText(b.courts)))));
+  });
 }
 
 function renderBasics() {
@@ -57,7 +78,6 @@ function renderBasics() {
         h('a', { class: 'btn btn-sm btn-wa', href: wa(p.phone, SITE.joinMessage), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
         h('a', { class: 'btn btn-sm btn-ghost', href: `tel:+91${p.phone}` }, 'Call')))));
 
-  if (has('#chain-times')) $('#chain-times').textContent = SESSIONS.map((x) => x.start).join(' or ');
 }
 
 // ---------- Media ----------
