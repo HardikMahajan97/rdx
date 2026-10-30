@@ -487,6 +487,9 @@ const en = {
   membersByBatchHint: 'Who has a seat on a plan in each batch.',
   newPlayers: 'New players',
   newPlayersHint: 'Approved registrations, last six months.',
+  registerConsent: 'By registering, you confirm that you are 18 or older (or that a parent or guardian is registering you) and agree to our Terms & Conditions and Privacy Policy, including how we use your details to run your account and contact you.',
+  termsLink: 'Terms & Conditions',
+  privacyLink: 'Privacy Policy',
   d0: 'Sun', d1: 'Mon', d2: 'Tue', d3: 'Wed', d4: 'Thu', d5: 'Fri', d6: 'Sat',
 };
 
@@ -973,6 +976,9 @@ const mr: Dict = {
   membersByBatchHint: 'प्रत्येक बॅचमध्ये प्लॅनवर कोणाची जागा आहे.',
   newPlayers: 'नवीन खेळाडू',
   newPlayersHint: 'मंजूर नोंदणी, मागील सहा महिने.',
+  registerConsent: 'नोंदणी करून तुम्ही पुष्टी करता की तुमचे वय 18 किंवा त्याहून अधिक आहे (किंवा पालक तुमची नोंदणी करत आहेत) आणि तुम्हाला आमच्या अटी व शर्ती आणि गोपनीयता धोरण मान्य आहे, यात तुमचे खाते चालवण्यासाठी आणि तुमच्याशी संपर्क साधण्यासाठी तुमची माहिती कशी वापरली जाते हेही येते.',
+  termsLink: 'अटी व शर्ती',
+  privacyLink: 'गोपनीयता धोरण',
   d0: 'रवि', d1: 'सोम', d2: 'मंगळ', d3: 'बुध', d4: 'गुरु', d5: 'शुक्र', d6: 'शनि',
 };
 
@@ -1456,6 +1462,9 @@ const hi: Dict = {
   membersByBatchHint: 'हर बैच में प्लान पर किसकी जगह है.',
   newPlayers: 'नए खिलाड़ी',
   newPlayersHint: 'मंज़ूर रजिस्ट्रेशन, पिछले छह महीने.',
+  registerConsent: 'रजिस्टर करके आप पुष्टि करते हैं कि आपकी उम्र 18 साल या उससे ज़्यादा है (या माता-पिता/अभिभावक आपका रजिस्ट्रेशन कर रहे हैं) और आप हमारे नियम व शर्तें और प्राइवेसी पॉलिसी से सहमत हैं, जिसमें यह भी शामिल है कि आपका अकाउंट चलाने और आपसे संपर्क करने के लिए आपकी जानकारी कैसे इस्तेमाल होती है.',
+  termsLink: 'नियम व शर्तें',
+  privacyLink: 'प्राइवेसी पॉलिसी',
   d0: 'रवि', d1: 'सोम', d2: 'मंगल', d3: 'बुध', d4: 'गुरु', d5: 'शुक्र', d6: 'शनि',
 };
 

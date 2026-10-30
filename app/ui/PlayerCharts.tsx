@@ -62,7 +62,7 @@ function TableView({ t, rows, caption }: { t: T; rows: Row[]; caption: string })
       <summary>{t('tableView')}</summary>
       <table>
         <caption className="sr-only">{caption}</caption>
-        <thead><tr><th scope="col" /> {GROUPS.map((g) => <th key={g} scope="col">{t(`grp_${g}` as Key)}</th>)}<th scope="col">{t('total')}</th></tr></thead>
+        <thead><tr><th scope="col" />{GROUPS.map((g) => <th key={g} scope="col">{t(`grp_${g}` as Key)}</th>)}<th scope="col">{t('total')}</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.key}><th scope="row">{r.label}</th>{GROUPS.map((g) => <td key={g}>{r.values[g]}</td>)}<td>{GROUPS.reduce((n, g) => n + r.values[g], 0)}</td></tr>

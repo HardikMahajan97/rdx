@@ -71,11 +71,10 @@ p { margin: 0; }
 /* ---------- Header ---------- */
 
 .mark { font: 800 1.5rem/1 var(--display); font-stretch: 125%; letter-spacing: -.03em; }
-.mark i { font-style: normal; color: var(--red); font-weight: 700; }
+.mark i { font-style: normal; color: inherit; font-weight: 700; } /* the x is the same white as the rest of the name, in the navbar and the footer */
 /* "RDx BADDY GROUP": always on one line, in capitals except the x */
 .mark { white-space: nowrap; letter-spacing: -.01em; }
 .top .mark { font-size: clamp(.8rem, 3.9vw, 1.25rem); }
-.top .mark i { color: inherit; } /* navbar: the x matches the rest of the name */
 .top {
   position: sticky; top: 0; z-index: 30;
   display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px;
@@ -432,6 +431,8 @@ html.intro { overflow: hidden; }
 @media (min-width: 1120px) { .legal { margin-left: max(0px, calc((100vw - var(--max)) / 2)); } }
 .legal h2 { font-size: clamp(1.3rem, 5.2vw, 1.6rem); font-stretch: 108%; margin: 36px 0 10px; }
 .legal h2:first-child { margin-top: 0; }
+.legal h3 { font-size: 1.1rem; margin: 18px 0 6px; }
+.legal li > ul { margin-top: 8px; }
 .legal p, .legal li { color: #ddd3bd; overflow-wrap: anywhere; }
 .legal p + p { margin-top: 10px; }
 .legal ul, .legal ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; }

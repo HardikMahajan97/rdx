@@ -77,6 +77,9 @@ async function RegisterContent({ searchParams }: Props) {
               </select>
             </label>
           </div>
+          <p className="muted consent">
+            {t('registerConsent')} <a href="/terms">{t('termsLink')}</a> · <a href="/privacy">{t('privacyLink')}</a>
+          </p>
           <Submit className="btn-big">{t('register')}</Submit>
         </form>
       )}

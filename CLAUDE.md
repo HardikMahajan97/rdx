@@ -118,6 +118,13 @@ This file holds the intent and the decisions made so far, so future work doesn't
 - Use the dataviz skill for any chart. The app is dark-only; series colours were run through its validator against the card surface `#0c0c0e`, in adjacent order, and all checks pass: **fixed plan `#e5484d` → wallet `#3987e5` → floater `#c98500`** (`--s-fixed`, `--s-wallet`, `--s-floater`). Keep that order in stacks, and keep colour tied to the group in every chart. A single series uses the neutral `--s-neutral`. Re-run the validator if you add a colour.
 - Every chart has a legend (≥ 2 series), labels only where they fit, the `ChartTips` readout (tap, hover or focus), and a table view or plain numbers. Bars are ≤ 24 px with 2 px gaps and 4 px round ends. Categories with no colour identity (activity) are numbers, not a chart.
 
+## Privacy and data protection (decided)
+
+- The policy pages follow the **DPDP Act, 2023** and the IT Act, 2000. `/privacy` is the full notice: what we collect, purposes, processors (Vercel, Neon in Singapore, Cloudinary, PhonePe, WhatsApp), storage outside India, photos/videos/audio (opt out by telling the team, takedown on request, under-18s only with a guardian's permission), cookies, rights, retention, security, breach notice, children (18+, or registered by a parent or guardian), and the **Grievance Officer: Rahul Dhekane, +91 88981 17019, 30 days to resolve**. Terms §10–11, the refund page and the contact page point to it.
+- **No hall or venue is named on the four policy pages** (owner's decision; halls change on Admin). Say "the venue" generically.
+- The Register form shows a consent line (`registerConsent`) linking to Terms and Privacy. Keep it if the form changes.
+- Only promise what the app does. Not done yet: a real erase (admin delete is soft and keeps the data) and a guardian check for under-18s. Don't claim automatic deletion after inactivity or a 1-year log store.
+
 ## Design decisions (the owner's taste; don't regress)
 
 - **Palette:** near-black, gray, beige/off-white and red only.
