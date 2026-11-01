@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { GENDERS, SKILL_LEVELS } from '@/lib/db';
@@ -9,6 +10,13 @@ import { Msg, Skeleton, Toolbar } from '../ui/Shared';
 
 // Registration has its own page, apart from Log in (the owner asked for them to be separate):
 // the promo site's Register buttons come here, and nothing on this page offers signing in.
+
+export const metadata: Metadata = {
+  title: 'Register',
+  description: 'Register with RDx BADDY GROUP (RDx Baddy), a badminton community of 300+ players. The team approves each registration, then you log in and book your slot.',
+  alternates: { canonical: '/register' },
+  robots: { index: true, follow: true },
+};
 
 type Props = { searchParams: Promise<{ msg?: string; mv?: string }> };
 

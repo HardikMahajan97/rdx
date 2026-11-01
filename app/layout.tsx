@@ -6,6 +6,8 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { getLang } from '@/lib/auth';
 import { translator } from '@/lib/i18n';
+import { INTRO_SCRIPT, INTRO_STYLE } from '@/lib/intro-head';
+import { SITE_URL } from '@/lib/site-url';
 import { LogoutButton } from './ui/Shared';
 import './globals.css';
 
@@ -14,18 +16,26 @@ import './globals.css';
 const display = Anek_Devanagari({ subsets: ['latin', 'devanagari'], axes: ['wdth'], variable: '--font-display', display: 'swap' });
 const body = Mukta({ subsets: ['latin', 'devanagari'], weight: ['400', '500', '600', '700'], variable: '--font-body', display: 'swap' });
 
-const name = process.env.COMMUNITY_NAME || 'Badminton Community';
-
+// The app's pages (sign-in, bookings, staff pages) stay out of search engines; the promo pages are what gets
+// indexed. /register overrides this so people can find it.
 export const metadata: Metadata = {
-  title: name,
-  description: `Book your ${name} slot`,
+  metadataBase: new URL(SITE_URL),
+  title: { default: 'RDx BADDY GROUP', template: '%s | RDx BADDY GROUP' },
+  description: 'Book your RDx BADDY GROUP badminton slot.',
+  applicationName: 'RDx BADDY GROUP',
   robots: { index: false, follow: false },
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#050506' };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    // The intro snippet adds a class to <html> before React loads, hence suppressHydrationWarning.
+    <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Intro video on the first page of every new visit, for everyone (signed in or not): lib/intro-head.ts */}
+        <style dangerouslySetInnerHTML={{ __html: INTRO_STYLE }} />
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
+      </head>
       <body>
         <header className="top">
           <Link href="/">

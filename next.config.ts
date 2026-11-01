@@ -10,7 +10,7 @@ const securityHeaders = [
 ];
 
 // Keep the app's pages (player names, money) out of search engines. The promo pages and `/` stay indexable.
-const appPages = ['/members', '/roster', '/admin', '/api/:path*'];
+const appPages = ['/members', '/roster', '/admin', '/players', '/requests', '/logout', '/api/:path*'];
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
