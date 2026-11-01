@@ -442,16 +442,23 @@ function navScroll() {
   if (a && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2;
 }
 
-/** First visit only: the RDx BADDY GROUP sting (about 5 s, with sound) plays once over the page, then the site shows. */
+/**
+ * Every new visit (new tab or browser, not a refresh): the RDx BADDY GROUP sting, about 5 s with a blast sound.
+ * Browsers only allow sound after a tap, so the poster shows with a "Tap to play" button (the owner asked for it,
+ * so the sound is never lost). The tap starts the video with sound; when it ends, the site shows.
+ */
 function intro() {
   const root = document.documentElement;
   if (!root.classList.contains('intro')) return;
-  const seen = () => { try { localStorage.setItem('rdx-intro', '1'); } catch { /* fine */ } };
-  const layer = h('div', { class: 'intro-layer', role: 'dialog', 'aria-label': 'RDx BADDY GROUP intro' });
-  // The video file is only requested from here, so nobody who has already seen it ever downloads it.
+  const seen = () => { try { sessionStorage.setItem('rdx-intro', '1'); } catch { /* fine */ } };
+  const layer = h('div', { class: 'intro-layer', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'RDx BADDY GROUP intro' });
+  // The video file is only requested from here, and it starts loading straight away so the tap plays at once.
   const video = h('video', { playsinline: true, preload: 'auto', poster: '/site/assets/video/intro-poster.jpg', 'aria-hidden': 'true' });
-  layer.append(video);
+  const play = h('button', { class: 'intro-play', type: 'button' },
+    h('span', { class: 'intro-play-icon', 'aria-hidden': 'true' }), h('b', {}, 'Tap to play'), h('small', {}, 'Sound on'));
+  layer.append(video, play);
   document.body.append(layer);
+  play.focus();
   let done = false;
   const finish = () => {
     if (done) return;
@@ -461,17 +468,20 @@ function intro() {
     layer.classList.add('out');
     setTimeout(() => { layer.remove(); root.classList.remove('intro'); video.removeAttribute('src'); video.load(); }, 600);
   };
+  const start = () => {
+    if (layer.classList.contains('playing')) return;
+    layer.classList.add('playing');
+    seen(); // from here a refresh goes straight to the site
+    video.muted = false;
+    const guard = () => setTimeout(finish, 14000);
+    // A real tap always allows sound. If the browser still refuses, play it silently rather than skip it.
+    video.play().then(guard).catch(() => { video.muted = true; video.play().then(guard).catch(finish); });
+  };
+  // The whole screen is the button, so a tap anywhere plays.
+  layer.addEventListener('click', start);
   video.addEventListener('ended', () => setTimeout(finish, 350)); // let the re-formed logo hold for a moment
   video.addEventListener('error', finish);
   video.src = '/site/assets/video/intro.mp4';
-  // Just play, with sound. Browsers often refuse sound before any tap; then it plays silently instead of asking,
-  // and the sound comes on if the visitor taps the screen.
-  video.play().then(seen).catch(() => {
-    video.muted = true;
-    layer.addEventListener('pointerdown', () => { video.muted = false; }, { once: true });
-    video.play().then(seen).catch(finish);
-  });
-  setTimeout(finish, 14000);
 }
 
 intro();

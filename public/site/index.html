@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <script>
-    // First visit only: the intro video plays once, then never again on this phone.
-    // Skipped for "reduce motion", for the app's Home button (?home), and when the browser can't remember the visit.
+    // Every new visit: the intro video shows each time the site is opened in a new tab or browser, but not on a
+    // refresh or when moving between pages (sessionStorage lasts as long as the tab). Skipped for "reduce motion"
+    // and for the app's Home button (?home).
     try {
-      var k = 'rdx-intro';
-      if (!localStorage.getItem(k) && !location.search.includes('home') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        localStorage.setItem('rdx-probe', '1'); localStorage.removeItem('rdx-probe');
+      if (!sessionStorage.getItem('rdx-intro') && !location.search.includes('home') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.documentElement.classList.add('intro');
-        setTimeout(function () { document.documentElement.classList.remove('intro'); }, 15000); // safety net
+        // Safety net: if site.js never builds the intro screen, don't leave the page covered.
+        setTimeout(function () { if (!document.querySelector('.intro-layer')) document.documentElement.classList.remove('intro'); }, 8000);
       }
     } catch (e) {}
   </script>
