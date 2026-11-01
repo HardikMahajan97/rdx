@@ -3,25 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <script>
-    // Every new visit: the intro video shows each time the site is opened in a new tab or browser, but not on a
-    // refresh or when moving between pages (sessionStorage lasts as long as the tab). Skipped for "reduce motion"
-    // and for the app's Home button (?home).
-    try {
-      if (!sessionStorage.getItem('rdx-intro') && !location.search.includes('home') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.documentElement.classList.add('intro');
-        // Safety net: if site.js never builds the intro screen, don't leave the page covered.
-        setTimeout(function () { if (!document.querySelector('.intro-layer')) document.documentElement.classList.remove('intro'); }, 8000);
-      }
-    } catch (e) {}
-  </script>
-  <title>RDx Badminton Community</title>
-  <meta name="description" content="RDx is a badminton community of 300+ players with morning and evening batches. Join, see announcements and tournaments.">
+  <!-- Intro video gate: the same text as lib/intro-head.ts -->
+  <style>html.intro::before{content:'';position:fixed;inset:0;z-index:90;background:#000}html.intro{overflow:hidden}</style>
+  <script>(function(){try{var d=document.documentElement,s=sessionStorage,k='rdx-intro';if(s.getItem(k))return;if(/[?&]home\b/.test(location.search)||/bot|crawl|spider|slurp|preview|lighthouse|headless/i.test(navigator.userAgent)||/^https?:\/\/([a-z0-9-]+\.)*(google|bing|duckduckgo|yahoo|yandex|baidu|ecosia|perplexity|chatgpt|brave)\./i.test(document.referrer)||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem(k,'1');return}d.classList.add('intro');var j=document.createElement('script');j.src='/site/assets/js/intro.js';j.async=true;document.head.appendChild(j);setTimeout(function(){if(!document.querySelector('.intro-layer'))d.classList.remove('intro')},8000)}catch(e){}})();</script>
+  <title>RDx BADDY GROUP | RDx Baddy Badminton Community</title>
+  <meta name="description" content="RDx BADDY GROUP (RDx Baddy) is a badminton community of 300+ players, run by Rahul Dhekane. Play every morning and evening as a member or drop-in player. Register and book your slot online.">
   <meta name="theme-color" content="#050506">
-  <meta property="og:title" content="RDx Badminton Community">
-  <meta property="og:description" content="RDx is a badminton community of 300+ players with morning and evening batches. Join, see announcements and tournaments.">
+  <meta property="og:title" content="RDx BADDY GROUP | RDx Baddy Badminton Community">
+  <meta property="og:description" content="RDx BADDY GROUP (RDx Baddy) is a badminton community of 300+ players, run by Rahul Dhekane. Play every morning and evening as a member or drop-in player. Register and book your slot online.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="/site/assets/img/og.png">
+  <meta property="og:image" content="https://rdxbaddy.vercel.app/site/assets/img/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="RDx BADDY GROUP logo">
+  <meta property="og:url" content="https://rdxbaddy.vercel.app/">
+  <meta property="og:site_name" content="RDx BADDY GROUP">
+  <meta property="og:locale" content="en_IN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <link rel="canonical" href="https://rdxbaddy.vercel.app/">
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="RDx BADDY GROUP summary for AI assistants">
   <link rel="icon" href="/site/assets/img/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/site/assets/img/icon-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="/site/assets/img/apple-touch-icon.png">
@@ -31,13 +32,14 @@
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@100..125,500..800&family=Mukta:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/site/assets/css/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SportsOrganization","@id":"https://rdxbaddy.vercel.app/#org","name":"RDx BADDY GROUP","alternateName":["RDx Baddy","RDx Baddy Group","RDx Badminton","RDx BADDY GRP","RDx"],"url":"https://rdxbaddy.vercel.app/","logo":{"@type":"ImageObject","url":"https://rdxbaddy.vercel.app/site/assets/img/icon-512.png","width":512,"height":512},"image":"https://rdxbaddy.vercel.app/site/assets/img/og.png","description":"A badminton community of 300+ players that plays every morning and evening. Members and drop-in players book their sessions online.","sport":"Badminton","foundingLocation":{"@type":"Country","name":"India"},"founder":{"@type":"Person","name":"Rahul Dhekane","alternateName":"RDx","jobTitle":"Community head"},"contactPoint":{"@type":"ContactPoint","telephone":"+91-8898117019","contactType":"customer support","areaServed":"IN","availableLanguage":["English","Marathi","Hindi"],"hoursAvailable":{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"07:00","closes":"21:00"}}},{"@type":"WebSite","@id":"https://rdxbaddy.vercel.app/#website","url":"https://rdxbaddy.vercel.app/","name":"RDx BADDY GROUP","alternateName":["RDx Baddy","RDx Baddy Group"],"publisher":{"@id":"https://rdxbaddy.vercel.app/#org"},"inLanguage":"en-IN"}]}</script>
   <script type="module" src="/site/assets/js/site.js"></script>
 </head>
 <body data-page="home">
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="top">
-    <a class="brand" href="/?home" aria-label="RDx BADDY GROUP home"><img class="brand-logo" src="/site/assets/img/logo.png" width="40" height="40" alt=""><span class="mark">RD<i>x</i> BADDY GROUP</span></a>
+    <a class="brand" href="/?home" aria-label="RDx BADDY GROUP home"><img class="brand-logo" src="/site/assets/img/logo.png" width="40" height="40" alt="RDx BADDY GROUP logo"><span class="mark">RD<i>x</i> BADDY GROUP</span></a>
     <nav aria-label="Pages" id="nav"><a href="/about">About</a><a href="/play">Play</a><a href="/membership">Membership</a><a href="/news">News</a><a href="/join">How to join</a></nav>
     <a class="btn btn-ghost btn-sm" data-app href="/?app=1">Log in</a>
     <a class="btn btn-red btn-sm" data-app="register" href="/register">Register</a>
@@ -45,7 +47,7 @@
 
   <main id="main">
     <header class="page-head" data-hide-dock>
-      <h1>Badminton every morning and evening.</h1>
+      <h1><span class="kicker">RDx BADDY GROUP · Badminton community</span>Badminton every morning and evening.</h1>
       <p class="page-intro">Drop in for a game, or join as a member and keep your spot.</p>
       <div class="cta">
         <a class="btn btn-red" data-app="register" href="/register">Register</a>
@@ -58,7 +60,7 @@
         <p class="big-stat"><b id="stat-members">300+</b><span>members</span></p>
         <h2 id="about-title">Who we are</h2>
       </div>
-      <p class="about-text">RDx is a badminton community of <span id="stat-members-2">300+</span> players. We play every morning and evening, members and drop-in players together, and rotate so everyone gets games.</p>
+      <p class="about-text"><b>RDx BADDY GROUP</b> (RDx Baddy) is a badminton community of <span id="stat-members-2">300+</span> players. We play every morning and evening, members and drop-in players together, and rotate so everyone gets games.</p>
       <h3 class="sub">Timings and courts</h3>
       <ul class="sessions-text" id="sessions-text"></ul>
     </section>
